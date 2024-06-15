@@ -1,0 +1,40 @@
+classes needed
+Server
+client
+channel
+
+First step will be
+creating sockets and handling server signals 
+
+Server will be containing all of the clients.
+
+Server
+• server port
+• server socket fd
+• a container for clients
+• container for channels
+• password
+
+
+
+
+client would be containing all of the information about clients such as 
+• nickname 
+• username
+• channels that the user is include
+• client fd
+• client ip address
+
+channel
+• channel name/id
+• list of users in the channel
+• list of operators in the channel
+
+Socket - an endpoint that enables processes to communicate to each other. something like how pipes get i/o.
+
+Ports - virtual places within an operating system where network connections start and end. They help computers sort the network traffic they receive.
+
+• Ports starting from 0 to 1023 can or cannot be used. HTTP, FTP are inside this scope. Using this scope requires admin priv to use.
+• 1024 to 49151 can be registered for specific purposes and are used by non-standard applications and services.
+• 49152 to 65535 used by client applications for outgoing connections.
+

@@ -1,0 +1,28 @@
+O_NONBLOCK = flag used in server socket mode to not prevent programs execution. An example is when a server is running and a client connected to it is typing something and he hasn't pressed enter yet, and we attempt to shutdown the server, we wont be able to do so as there is a reading operation in progress.
+
+Active Socket (IRC Client):
+An active socket in IRC represents the client-side connection to an IRC server. The IRC client initiates communication by connecting to the IRC server using a TCP/IP connection. Once connected, the client can send commands and messages to the server and receive responses. The IRC client socket handles user input, sends messages to the server, and processes server responses.
+
+Passive Socket (IRC Server):
+A passive socket in IRC represents the server-side listening socket that accepts incoming connections from IRC clients. The IRC server listens for incoming connections on a specific port, When a connection request is received from an IRC client, the server socket accepts the connection, creating a new socket for communication with that client. The IRC server socket manages multiple client connections simultaneously, handling commands and messages from each connected client and broadcasting messages to all clients as needed.
+
+
+Structs for containing ipv4 information
+    struct sockaddr_in {
+ sa_family_t     sin_family;
+ in_port_t       sin_port;
+ struct  in_addr sin_addr;
+ char            sin_zero[8];
+};
+
+struct in_addr {
+ in_addr_t s_addr;
+};
+
+Structs for monitoring file descriptors for i/o events
+struct pollfd {
+ int     fd; //-> file descriptor
+ short   events;//-> requested events
+ short   revents;//-> returned events
+};
+
