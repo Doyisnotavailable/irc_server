@@ -1,11 +1,11 @@
-#include "includes/Server.hpp"
-#include "include/Client.hpp"
-#include "include/Channel.hpp"
+#include "../includes/Server.hpp"
+#include "../includes/Client.hpp"
+#include "../includes/Errormsg.hpp"
 
-int main(int ac, char av**) {
+int main(int ac, char **av) {
     if (ac == 3) {
-        std::string pass = av[1]
-        std::string port = av[2]
+        std::string pass = av[1];
+        std::string port = av[2];
         try {
             // catch signals to terminante server
             Server serv(port, pass);
