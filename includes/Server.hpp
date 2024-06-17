@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 #include <sys/socket.h>
-#include <sys/type.h>
+// #include <sys/type.h>
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <csignal>
@@ -16,9 +16,11 @@
 #include <map>
 
 
+#include <ctype.h>
+
 class Server {
     private:
-        std::string pass // pass needed to connect to the server
+        std::string pass; // pass needed to connect to the server
         int port;
         int serverfd;
         bool stopflag;
