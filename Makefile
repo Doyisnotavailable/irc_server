@@ -5,7 +5,7 @@ CXX                     = c++
 CXXFLAGS                = -Wall -Wextra -Werror -std=c++98 -g3
 
 OBJDIR                  = obj
-SRCS                    = src/main.cpp src/Server.cpp src/Errormsg.cpp src/Client.cpp
+SRCS                    = src/main.cpp src/Server.cpp src/Errormsg.cpp src/Client.cpp src/Channel.cpp
 OBJ_FILES               = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
 
 $(OBJDIR)/%.o:  %.cpp
