@@ -36,6 +36,8 @@ class Client {
 		// std::removeChannel(const Channel *ptr)
 
 		/* was thinking of making handling operator = for Client just to make shallow copy and have a bool operator == for easily finding Client inside vector */
+		bool operator==(const Client& tocheck);
+		void addChannel(const Channel& ch);
 };
 
 #endif

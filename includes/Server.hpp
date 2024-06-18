@@ -15,8 +15,9 @@
 #include <vector>
 #include <map>
 #include <unistd.h>
-
+#include <sstream>
 #include <ctype.h>
+#include "Util.hpp"
 
 class Server {
     private:
@@ -37,7 +38,7 @@ class Server {
         int getport() const;
         int getserverfd() const;
         bool getstopflag() const;
-        Client* getClient() const;
+        Client* getClient(int fd); // finding client using its fd
         Channel* getChannel() const;
 
         // server mem funcs
@@ -45,9 +46,14 @@ class Server {
         void startServer(); // main loop for server is here
         void receive(int fd); // get incoming messages can make receive and send to clients in one function still not sure about that
         void addClient();
-        void addChannel();
+		void setClient();
+        void addChannel(const std::string& chName, int clientfd);
 		void removeClient(int fd);
         void removeClientAllChannels(int fd);
+		void checkReceived(std::string str, Client* cl);
+		// tester utils
+		void displayChannel();
+		void displayClient();
 };
 
 #endif

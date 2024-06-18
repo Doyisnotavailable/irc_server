@@ -100,12 +100,29 @@ void Server::receive(int fd) {
 	size_t size = recv(fd, str, sizeof(str) - 1, 0);
 
 	if (size <= 0) {
-		std::cout << "Nothing" << std::endl;
+		std::cout << "Client " << this->getClient(fd)->getfd() << " disconnected" << std::endl;
 		removeClient(fd);
 		close(fd);
 	} else {
 		str[size] = '\0';
-		std::cout << "client [" << fd << "]" << " " << str << std::endl;
+		std::string line = str;
+		checkReceived(line, getClient(fd));
+	}
+}
+
+void Server::checkReceived(std::string str, Client* cl) {
+
+	std::vector<std::string> line = ::split(str, ' ');
+	int size = line.size();
+	if (size == 2 && line[0] == "JOIN") {
+		std::cout << "Trying to create a channel" << std::endl;
+		addChannel(line[1], cl->getfd());
+	} else {
+		std::cout << "Size is = " << size << std::endl;
+		for (size_t i = 0; i < line.size(); ++i) {
+			std::cout << "Index [" << i << "]" << "'" << line[i] << "'" << std::endl;
+
+		}
 	}
 }
 
@@ -128,8 +145,21 @@ void Server::addClient() {
 
 	client.setfd(clientfd); //-> set the client file descriptor
 	client.setipAdd(inet_ntoa((cliadd.sin_addr))); //-> convert the ip address to string and set it
+	
+	// this brackets are for testing purposes
+	{
+	std::stringstream ss;
+	ss << clientfd;
+	std::string nick = "nickname test " + ss.str();
+	std::string user = "username test " + ss.str();
+
+	client.setnName(nick);
+	client.setuName(user);
+	}
+
 	clients.push_back(client); //-> add the client to the vector of clients
 	pollfds.push_back(NewPoll); //-> add the client socket to the pollfd
+	displayClient();
 	std::cout << "done" << std::endl;
 }
 
@@ -160,3 +190,41 @@ void Server::removeClient(int fd) {
 // void Server::removeClientAllChannels(int fd) {
 // 	std::vector<Channel> tmp = client[]
 // }
+
+
+void Server::addChannel(const std::string& chName, int clientfd) {
+	// try {
+	// 	Channel ch(chName);
+	// 	channels.push_back(ch);
+	// } catch (std::exception& e) {
+	// 	std::cerr << e.what();
+	// 	return ;
+	// }
+	Channel ch(chName);
+	ch.addClient(*this->getClient(clientfd));
+	channels.push_back(ch);
+	displayChannel();
+}
+
+Client* Server::getClient(int fd) {
+	for (size_t i = 0; i < this->clients.size(); ++i) {
+		if (this->clients[i].getfd() == fd)
+			return &this->clients[i];
+	}
+	return NULL;
+}
+
+void Server::displayClient() {
+	for (size_t i = 0; i < clients.size(); ++i) {
+		std::cout << "Client nick name: " << clients[i].getnName() << std::endl;
+		std::cout << "Client user name: " << clients[i].getuName() << std::endl;
+		std::cout << "Client fd: " << clients[i].getfd() << std::endl;
+		std::cout << "Client ip: " << clients[i].getipAdd() << std::endl;
+	}
+}
+
+void Server::displayChannel() {
+	for (size_t i = 0; i < channels.size(); ++i) {
+		std::cout << "channel name : " << channels[i].getchannelName() << std::endl;
+	}
+}

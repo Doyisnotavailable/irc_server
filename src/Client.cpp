@@ -57,3 +57,11 @@ void Client::setuName(const std::string& str) {
 void Client::setipAdd(const std::string& str) {
 	this->ipAdd = str;
 }
+
+void Client::addChannel(const Channel& ch) {
+	this->clientChannelList.push_back(ch);
+}
+
+bool Client::operator==(const Client& tocheck) {
+	return this->getfd() == tocheck.getfd();
+}
