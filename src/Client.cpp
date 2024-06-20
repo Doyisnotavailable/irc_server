@@ -1,6 +1,8 @@
-#include "../includes/Server.hpp"
+// #include "../includes/Server.hpp"
 #include "../includes/Client.hpp"
 #include "../includes/Errormsg.hpp"
+
+class Server;
 
 Client::Client() {
 	this->fd = -1;

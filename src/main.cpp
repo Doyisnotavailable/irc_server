@@ -1,6 +1,7 @@
 #include "../includes/Server.hpp"
-#include "../includes/Client.hpp"
+// #include "../includes/Client.hpp"
 #include "../includes/Errormsg.hpp"
+
 
 int main(int ac, char **av) {
     if (ac == 3) {

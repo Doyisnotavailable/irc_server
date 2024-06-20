@@ -1,10 +1,10 @@
 #include "../includes/Server.hpp"
-#include "../includes/Errormsg.hpp"
+// #include "../includes/Errormsg.hpp"
 #include <algorithm>
 #include <poll.h>
+#include <cstring>
 
-// Server::stopflag = false;
-
+bool stopfl = false;
 Server::Server(std::string port, std::string pass) {
     if (port.empty() || pass.empty()) {
 		throw emptyArg();
@@ -78,7 +78,8 @@ void Server::initserverSock() {
 void Server::startServer() {
     std::cout << "Starting Server" << std::endl;
 
-    while (stopflag == false) {
+	std::signal(SIGINT, sigma);
+    while (stopfl == false) {
         if (poll(&pollfds[0], pollfds.size(), -1) == -1)
             throw InvalidInput();
 
@@ -91,11 +92,14 @@ void Server::startServer() {
             }
         }   
     }
+	for (size_t i = 0; i < clients.size(); ++i) {
+		close(clients[i].getfd());
+	}
 }
 
 void Server::receive(int fd) {
 	char str[32767];
-	std::memset(str, 0, sizeof(str));
+	memset(str, 0, sizeof(str));
 
 	size_t size = recv(fd, str, sizeof(str) - 1, 0);
 
@@ -113,17 +117,19 @@ void Server::receive(int fd) {
 void Server::checkReceived(std::string str, Client* cl) {
 
 	std::vector<std::string> line = ::split(str, ' ');
-	int size = line.size();
-	if (size == 2 && line[0] == "JOIN") {
-		std::cout << "Trying to create a channel" << std::endl;
-		addChannel(line[1], cl->getfd());
-	} else {
-		std::cout << "Size is = " << size << std::endl;
-		for (size_t i = 0; i < line.size(); ++i) {
-			std::cout << "Index [" << i << "]" << "'" << line[i] << "'" << std::endl;
-
-		}
-	}
+	if (line[0].empty())
+		return ;
+	if (line[0] == "JOIN")
+		std::cout<< "JOIN";
+		// joinCMD();
+	else if (line[0] == "KICK")
+		std::cout << "process kick command" << std::endl;
+	else if (line[0] == "TOPIC")
+		std::cout << "process topic command" << std::endl;
+	else if (line[0] == "MODE")
+		std::cout << "process mode command" << std::endl;
+	else
+		std::cout << "wtf are you typing " << cl->getnName() << std::endl;
 }
 
 void Server::addClient() {
@@ -227,4 +233,13 @@ void Server::displayChannel() {
 	for (size_t i = 0; i < channels.size(); ++i) {
 		std::cout << "channel name : " << channels[i].getchannelName() << std::endl;
 	}
+}
+
+// void Server::joinCMD(std::vector<std::string> line, Client* cl) {
+// 	std::cout << "asd" << std::endl;
+// }
+
+void sigma(int signum) {
+	(void)signum;
+	stopfl = true;
 }

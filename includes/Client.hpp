@@ -15,6 +15,7 @@ class Client {
         std::string     uName; // username 
         std::string     ipAdd; // ip address
 		std::vector<class Channel> clientChannelList;
+		std::string		currentchannel;
     public:
         Client();
         ~Client();

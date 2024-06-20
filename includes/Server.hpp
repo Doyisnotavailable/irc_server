@@ -19,6 +19,7 @@
 #include <ctype.h>
 #include "Util.hpp"
 
+
 class Server {
     private:
         std::string pass; // pass needed to connect to the server
@@ -51,9 +52,13 @@ class Server {
 		void removeClient(int fd);
         void removeClientAllChannels(int fd);
 		void checkReceived(std::string str, Client* cl);
+		
+		// commands
+		void joinCMD(std::vector<std::string> line, Client* cl);
 		// tester utils
 		void displayChannel();
 		void displayClient();
 };
 
+	void sigma(int signum);
 #endif
