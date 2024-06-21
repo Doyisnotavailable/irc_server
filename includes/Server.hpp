@@ -3,6 +3,7 @@
 
 #include "Client.hpp"
 #include "Channel.hpp"
+#include "Errormsg.hpp"
 #include <iostream>
 #include <string>
 #include <sys/socket.h>
@@ -40,7 +41,7 @@ class Server {
         int getserverfd() const;
         bool getstopflag() const;
         Client* getClient(int fd); // finding client using its fd
-        Channel* getChannel() const;
+        Channel* getChannel(const std::string& chname);
 
         // server mem funcs
         void initserverSock();
@@ -48,11 +49,11 @@ class Server {
         void receive(int fd); // get incoming messages can make receive and send to clients in one function still not sure about that
         void addClient();
 		void setClient();
-        void addChannel(const std::string& chName, int clientfd);
+        void addChannel(const std::string& chName, Client& cl);
 		void removeClient(int fd);
         void removeClientAllChannels(int fd);
 		void checkReceived(std::string str, Client* cl);
-		
+		bool isChannel(const std::string& chname);
 		// commands
 		void joinCMD(std::vector<std::string> line, Client* cl);
 		// tester utils

@@ -8,25 +8,41 @@
 
 class Client;
 class Server;
+
 class Channel {
     private:
 		std::string channelName;
 		std::vector<class Client> clientlist;
 		std::vector<class Client> operlist;
-		std::string topic;
-		static bool invFlag; //flag for invite only channel
-		static bool passFlag; //flag for channel password
-		static bool topicFlag; //flag for topic operator
-		static bool userFlag; // flag for user limit
-
+		std::string* key;
+		std::string* topic;
+		bool invFlag; //flag for invite only channel
+		bool keyFlag; //flag for channel password
+		bool topicFlag; //flag for topic operator
+		bool clientFlag; // flag for user limit
+		int limit;
     public:
 		Channel();
+		// Channel(std::string line);
 		~Channel();
 		Channel(const std::string& chName);
-		std::string getchannelName() const;
-		Client* getClient(const std::string& nName);
+		Channel(const std::string& chName, Client& cl);
+		Channel& operator=(const Channel& toasgn);
 		void addClient(Client& client);
 
+		//getter setter here//
+		std::string getchannelName() const;
+		Client* getClient(const std::string& nName);
+		bool getinvFlag();
+		bool getkeyFlag();
+		bool gettopicFlag();
+		bool getclientFlag();
+		int getclientSize();
+		int getlimit();
+		// ------------------ //
+
+		bool checkclientExist(Client* cl);
+		bool joinFlags(); //function to check if any of a flag is true when joining
 };
 
 #endif

@@ -80,7 +80,7 @@ void Server::startServer() {
 
 	std::signal(SIGINT, sigma);
     while (stopfl == false) {
-        if (poll(&pollfds[0], pollfds.size(), -1) == -1)
+        if (poll(&pollfds[0], pollfds.size(), -1) == -1 && stopfl == false)
             throw InvalidInput();
 
         for (size_t i = 0; i < pollfds.size(); i++) {
@@ -92,9 +92,12 @@ void Server::startServer() {
             }
         }   
     }
-	for (size_t i = 0; i < clients.size(); ++i) {
-		close(clients[i].getfd());
+	for (size_t i = 0; i < pollfds.size(); ++i) {
+		// if (pollfds[i].fd == serverfd)
+		// 	std::cout << "saw serverfd inside pollfds" << std::endl;
+		close(pollfds[i].fd);
 	}
+	// close(serverfd);
 }
 
 void Server::receive(int fd) {
@@ -120,8 +123,7 @@ void Server::checkReceived(std::string str, Client* cl) {
 	if (line[0].empty())
 		return ;
 	if (line[0] == "JOIN")
-		std::cout<< "JOIN";
-		// joinCMD();
+		joinCMD(line, cl);
 	else if (line[0] == "KICK")
 		std::cout << "process kick command" << std::endl;
 	else if (line[0] == "TOPIC")
@@ -198,24 +200,38 @@ void Server::removeClient(int fd) {
 // }
 
 
-void Server::addChannel(const std::string& chName, int clientfd) {
-	// try {
-	// 	Channel ch(chName);
-	// 	channels.push_back(ch);
-	// } catch (std::exception& e) {
-	// 	std::cerr << e.what();
-	// 	return ;
-	// }
-	Channel ch(chName);
-	ch.addClient(*this->getClient(clientfd));
+void Server::addChannel(const std::string& chName, Client& cl) {
+	
+	// dont forget check channel name if its valid.
+	Channel ch(chName, cl);
+
 	channels.push_back(ch);
-	displayChannel();
+	cl.addChannel(ch);
+	std::cout << "Client " << cl.getuName() << " created a channel " << chName << std::endl; 
 }
+
+bool Server::isChannel(const std::string& chname) {
+	for (size_t i = 0; i < channels.size(); ++i) {
+		if (chname == channels[i].getchannelName())
+			return true;
+	}
+	return false;
+}
+
+
 
 Client* Server::getClient(int fd) {
 	for (size_t i = 0; i < this->clients.size(); ++i) {
 		if (this->clients[i].getfd() == fd)
 			return &this->clients[i];
+	}
+	return NULL;
+}
+
+Channel* Server::getChannel(const std::string& chname) {
+	for (size_t i = 0; i < this->channels.size(); ++i){
+		if (this->channels[i].getchannelName() == chname)
+			return &this->channels[i];
 	}
 	return NULL;
 }
@@ -235,9 +251,41 @@ void Server::displayChannel() {
 	}
 }
 
-// void Server::joinCMD(std::vector<std::string> line, Client* cl) {
-// 	std::cout << "asd" << std::endl;
-// }
+void Server::joinCMD(std::vector<std::string> line, Client* cl) {
+	
+	std::cout << "inside join cmd" << std::endl;
+	std::cout << "line size is = " << line.size() << std::endl;
+	//process join join command we have to check in this function contents of the line to determine which constructor show
+	if (line.size() == 2) {
+		std::vector<std::string> chname = split(line[1], ',');
+		for(size_t i = 0; i < chname.size(); ++i){
+			const char *tmp = chname[i].c_str();
+			if (tmp[0] == '#'){
+				//check if the channel is existing
+				if (isChannel(chname[i])) {
+					Channel *tmpch = getChannel(chname[i]);
+					//check flags if its possible to join
+					if (!tmpch->joinFlags() && !tmpch->checkclientExist(cl))
+						std::cout << "client can join" << std::endl;//client chan join
+					else if (tmpch->getinvFlag() == true)
+						std::cout << "Invite only channel client cant join" << std::endl;
+					else if (tmpch->getkeyFlag() == true)
+						std::cout << "Channel requires key to join" << std::endl;
+					else if (tmpch->getclientFlag() == true && tmpch->getlimit() <= tmpch->getclientSize())
+						std::cout << "Client limit in the channel already reached" << std::endl;
+				} else
+					addChannel(chname[i], *cl); //creates channel if it doesnt exist
+			}
+			else
+				std::cout << "Invalid channel name" << std::endl;
+		}
+	} else if (line.size() == 3) {
+		// this case is for taking keys for channel
+	}
+	else
+		std::cout << "Invalid use of command JOIN" << std::endl; //need to check what error to send to client.
+}
+
 
 void sigma(int signum) {
 	(void)signum;
