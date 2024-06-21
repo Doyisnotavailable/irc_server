@@ -259,33 +259,61 @@ void Server::joinCMD(std::vector<std::string> line, Client* cl) {
 	if (line.size() == 2) {
 		std::vector<std::string> chname = split(line[1], ',');
 		for(size_t i = 0; i < chname.size(); ++i){
-			const char *tmp = chname[i].c_str();
-			if (tmp[0] == '#'){
-				//check if the channel is existing
-				if (isChannel(chname[i])) {
-					Channel *tmpch = getChannel(chname[i]);
-					//check flags if its possible to join
-					if (!tmpch->joinFlags() && !tmpch->checkclientExist(cl))
-						std::cout << "client can join" << std::endl;//client chan join
-					else if (tmpch->getinvFlag() == true)
-						std::cout << "Invite only channel client cant join" << std::endl;
-					else if (tmpch->getkeyFlag() == true)
-						std::cout << "Channel requires key to join" << std::endl;
-					else if (tmpch->getclientFlag() == true && tmpch->getlimit() <= tmpch->getclientSize())
-						std::cout << "Client limit in the channel already reached" << std::endl;
-				} else
-					addChannel(chname[i], *cl); //creates channel if it doesnt exist
-			}
-			else
-				std::cout << "Invalid channel name" << std::endl;
+			joinChannel(chname[i], NULL, cl);
 		}
 	} else if (line.size() == 3) {
 		// this case is for taking keys for channel
+		std::vector<std::string> chname = ::split(line[1], ',');
+		std::vector<std::string> keys = ::split(line[2], ',');
+		for (size_t i = 0; i < chname.size(); ++i){
+			if (i < keys.size())
+				joinChannel(chname[i], keys[i].c_str(), cl);
+			else
+				joinChannel(chname[i], NULL, cl);
+		}
 	}
 	else
 		std::cout << "Invalid use of command JOIN" << std::endl; //need to check what error to send to client.
 }
 
+void Server::joinChannel(std::string chName, const char* key, Client* cl){
+	const char *tmp = chName.c_str();
+	if (tmp[0] == '#'){
+		//check if the channel is existing
+		if (isChannel(chName)) {
+			Channel *tmpch = getChannel(chName);
+			//check flags if its possible to join
+			if (tmpch->checkclientExist(cl)){
+				std::cout << "Client already at channel" << std::endl;
+				return ;
+			}
+			if (!tmpch->joinFlags())
+				std::cout << "client can join" << std::endl;//client chan join
+			else if (tmpch->getinvFlag() == true)
+				std::cout << "Invite only channel client cant join" << std::endl;
+			else if (tmpch->getkeyFlag() == true && key == NULL)
+				std::cout << "Channel requires key to join" << std::endl;
+			else if (tmpch->getkeyFlag() == true && key != NULL) {
+				joinPass(tmpch, key, cl);
+			} else if (tmpch->getclientFlag() == true && tmpch->getlimit() <= tmpch->getclientSize())
+				std::cout << "Client limit in the channel already reached" << std::endl;
+			} else
+				addChannel(chName, *cl); //creates channel if it doesnt exist
+	} else
+		std::cout << "Invalid channel name" << std::endl;
+}
+
+void Server::joinPass(Channel* chName, const char* key, Client* cl){
+	std::string tmpkey(key);
+	if (chName->getclientFlag() == true && chName->getlimit() <= chName->getclientSize()){
+		std::cout << "Client limit in the channel already reached" << std::endl;
+		return ;
+	}
+	if (tmpkey == chName->getKey()) {
+		chName->addClient(*cl);
+	} else
+		std::cout << "Wrong channel key" << std::endl;
+}
 
 void sigma(int signum) {
 	(void)signum;

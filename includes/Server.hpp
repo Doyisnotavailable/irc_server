@@ -54,8 +54,12 @@ class Server {
         void removeClientAllChannels(int fd);
 		void checkReceived(std::string str, Client* cl);
 		bool isChannel(const std::string& chname);
+
+        void addClienttoChannel(Channel* chName, Client* cl);
 		// commands
 		void joinCMD(std::vector<std::string> line, Client* cl);
+        void joinChannel(std::string chName, const char* key, Client* cl);
+        void joinPass(Channel* chName, const char* key, Client* cl);
 		// tester utils
 		void displayChannel();
 		void displayClient();

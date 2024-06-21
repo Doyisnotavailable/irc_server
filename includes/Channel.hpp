@@ -14,8 +14,8 @@ class Channel {
 		std::string channelName;
 		std::vector<class Client> clientlist;
 		std::vector<class Client> operlist;
-		std::string* key;
-		std::string* topic;
+		std::string key;
+		std::string topic;
 		bool invFlag; //flag for invite only channel
 		bool keyFlag; //flag for channel password
 		bool topicFlag; //flag for topic operator
@@ -31,6 +31,7 @@ class Channel {
 		void addClient(Client& client);
 
 		//getter setter here//
+		const std::string getKey() const;
 		std::string getchannelName() const;
 		Client* getClient(const std::string& nName);
 		bool getinvFlag();

@@ -36,8 +36,8 @@ Channel::Channel(const std::string& chName, Client& cl): channelName(chName){
 	keyFlag = false;
 	topicFlag = false;
 	clientFlag = false;
-	key = NULL;
-	topic = NULL;
+	key = "";
+	topic = "";
 	limit = 0;
 	clientlist.push_back(cl);
 	operlist.push_back(cl);
@@ -66,6 +66,9 @@ bool Channel::gettopicFlag() {
 
 bool Channel::getclientFlag() {
 	return this->clientFlag;
+}
+const std::string Channel::getKey() const {
+	return this->key;
 }
 
 int Channel::getlimit() {
