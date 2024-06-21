@@ -91,3 +91,17 @@ bool Channel::checkclientExist(Client* cl) {
 	}
 	return false;
 }
+
+void Channel::removeClient(Client* cl){
+	for (size_t i = 0; i < clientlist.size(); ++i){
+		if (cl->getfd() == clientlist[i].getfd()){
+			clientlist.erase(clientlist.begin() + i);
+		}
+	}
+	for (size_t i = 0; i < operlist.size(); ++i){
+		if (cl->getfd() == operlist[i].getfd()){
+			operlist.erase(operlist.begin() + i);
+		}
+	}
+	cl->removeChannel(*this);
+}

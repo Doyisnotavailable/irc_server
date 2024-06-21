@@ -16,6 +16,18 @@ Client::~Client() {
 	// close(fd);
 }
 
+Client& Client::operator=(const Client& toasgn){
+	if (this != &toasgn){
+		fd = toasgn.fd;
+		operFlag = toasgn.fd;
+		nName = toasgn.nName;
+		uName = toasgn.uName;
+		ipAdd = toasgn.ipAdd;
+		clientChannelList = toasgn.clientChannelList;
+	}
+	return *this;
+}
+
 int Client::getfd() const {
 	return this->fd;
 }
@@ -62,6 +74,13 @@ void Client::setipAdd(const std::string& str) {
 
 void Client::addChannel(const Channel& ch) {
 	this->clientChannelList.push_back(ch);
+}
+
+void Client::removeChannel(const Channel& ch){
+	for (size_t i = 0; i < clientChannelList.size(); ++i){
+		if (ch.getchannelName() == clientChannelList[i].getchannelName())
+			clientChannelList.erase(clientChannelList.begin() + i);
+	}
 }
 
 bool Client::operator==(const Client& tocheck) {

@@ -44,6 +44,7 @@ class Channel {
 
 		bool checkclientExist(Client* cl);
 		bool joinFlags(); //function to check if any of a flag is true when joining
+		void removeClient(Client *cl);
 };
 
 #endif

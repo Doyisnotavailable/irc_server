@@ -125,7 +125,7 @@ void Server::checkReceived(std::string str, Client* cl) {
 	if (line[0] == "JOIN")
 		joinCMD(line, cl);
 	else if (line[0] == "KICK")
-		std::cout << "process kick command" << std::endl;
+		kickCMD(line, cl);
 	else if (line[0] == "TOPIC")
 		std::cout << "process topic command" << std::endl;
 	else if (line[0] == "MODE")
@@ -228,6 +228,14 @@ Client* Server::getClient(int fd) {
 	return NULL;
 }
 
+Client* Server::getClient(const std::string& name){
+	for (size_t i = 0; i < this->clients.size(); ++i){
+		if (this->clients[i].getuName() == name)
+			return &clients[i];
+	}
+	return NULL;
+}
+
 Channel* Server::getChannel(const std::string& chname) {
 	for (size_t i = 0; i < this->channels.size(); ++i){
 		if (this->channels[i].getchannelName() == chname)
@@ -287,8 +295,10 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 				std::cout << "Client already at channel" << std::endl;
 				return ;
 			}
-			if (!tmpch->joinFlags())
-				std::cout << "client can join" << std::endl;//client chan join
+			if (!tmpch->joinFlags()) {
+				tmpch->addClient(*cl);
+				std::cout << "client joined" << std::endl;
+			}
 			else if (tmpch->getinvFlag() == true)
 				std::cout << "Invite only channel client cant join" << std::endl;
 			else if (tmpch->getkeyFlag() == true && key == NULL)
@@ -313,6 +323,24 @@ void Server::joinPass(Channel* chName, const char* key, Client* cl){
 		chName->addClient(*cl);
 	} else
 		std::cout << "Wrong channel key" << std::endl;
+}
+
+void Server::kickCMD(std::vector<std::string> line, Client* cl){
+	if(!isChannel(line[1])){
+		std::cout << "Channel doesnt exit" << std::endl;
+		return ;
+	}
+	Channel* tmpch = getChannel(line[1]);
+	Client* removeCl = getClient(line[2]);
+	//have to check if cl is a channel operator or operator
+	if (!removeCl){
+		std::cout << "Client not found" << std::endl;
+		return ;
+	}
+	if (tmpch->checkclientExist(removeCl)){
+		tmpch->removeClient(removeCl);
+		std::cout << "KICK message on channel " << tmpch->getchannelName() << " from " << cl->getuName() << " to remove " << removeCl->getuName() << " from channel" << std::endl;
+	}
 }
 
 void sigma(int signum) {

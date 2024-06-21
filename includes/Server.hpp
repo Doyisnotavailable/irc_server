@@ -41,6 +41,7 @@ class Server {
         int getserverfd() const;
         bool getstopflag() const;
         Client* getClient(int fd); // finding client using its fd
+        Client* getClient(const std::string& name);
         Channel* getChannel(const std::string& chname);
 
         // server mem funcs
@@ -60,7 +61,9 @@ class Server {
 		void joinCMD(std::vector<std::string> line, Client* cl);
         void joinChannel(std::string chName, const char* key, Client* cl);
         void joinPass(Channel* chName, const char* key, Client* cl);
-		// tester utils
+		void kickCMD(std::vector<std::string> line, Client* cl);
+        
+        // tester utils
 		void displayChannel();
 		void displayClient();
 };

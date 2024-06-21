@@ -15,11 +15,10 @@ class Client {
         std::string     uName; // username 
         std::string     ipAdd; // ip address
 		std::vector<class Channel> clientChannelList;
-		std::string		currentchannel;
     public:
         Client();
         ~Client();
-
+        Client& operator=(const Client& toasgn);
         // getter functions && setter functions//
         int     getfd() const;
         bool    getoperFlag() const;
@@ -34,7 +33,7 @@ class Client {
 		void setuName(const std::string& str);
 		void setipAdd(const std::string& str);
         // ------------------//
-		// std::removeChannel(const Channel *ptr)
+        void removeChannel(const Channel& ch);
 
 		/* was thinking of making handling operator = for Client just to make shallow copy and have a bool operator == for easily finding Client inside vector */
 		bool operator==(const Client& tocheck);
