@@ -78,6 +78,10 @@ int Channel::getlimit() {
 int Channel::getclientSize(){
 	return this->clientlist.size();
 }
+
+std::vector<class Client> Channel::getclientList(){
+	return this->clientlist;
+}
 bool Channel::joinFlags() {
 	if (getinvFlag() || getkeyFlag() || getclientFlag())
 		return true;
@@ -87,6 +91,14 @@ bool Channel::joinFlags() {
 bool Channel::checkclientExist(Client* cl) {
 	for(size_t i = 0; i < clientlist.size(); ++i) {
 		if (cl->getfd() == clientlist[i].getfd())
+			return true;
+	}
+	return false;
+}
+
+bool Channel::checkclientOper(Client* cl) {
+	for(size_t i = 0; i < operlist.size(); ++i) {
+		if (cl->getfd() == operlist[i].getfd())
 			return true;
 	}
 	return false;

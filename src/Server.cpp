@@ -29,10 +29,7 @@ Server::Server(std::string port, std::string pass) {
     if (a < 0 || a > 65535) {
 		std::cout << "invalid port cout" << std::endl;
 		throw InvalidPort();
-	} else
-		std::cout << "here before aasdasdtoi" << std::endl;
-	
-	std::cout << "here" << std::endl;
+	}
     this->pass = pass;
     this->port = a;
     this->stopflag = false;
@@ -43,6 +40,10 @@ Server::Server(std::string port, std::string pass) {
 
 Server::~Server() {
     // close(serverfd); // close all fds
+	for (size_t i = 0; i < pollfds.size(); ++i){
+		std::cout << "closing port " << pollfds[i].fd << std::endl;
+		close(pollfds[i].fd);
+	}
 }
 
 void Server::initserverSock() {
@@ -92,12 +93,6 @@ void Server::startServer() {
             }
         }   
     }
-	for (size_t i = 0; i < pollfds.size(); ++i) {
-		// if (pollfds[i].fd == serverfd)
-		// 	std::cout << "saw serverfd inside pollfds" << std::endl;
-		close(pollfds[i].fd);
-	}
-	// close(serverfd);
 }
 
 void Server::receive(int fd) {
@@ -114,6 +109,7 @@ void Server::receive(int fd) {
 		str[size] = '\0';
 		std::string line = str;
 		checkReceived(line, getClient(fd));
+		displayChannel();
 	}
 }
 
@@ -158,8 +154,8 @@ void Server::addClient() {
 	{
 	std::stringstream ss;
 	ss << clientfd;
-	std::string nick = "nickname test " + ss.str();
-	std::string user = "username test " + ss.str();
+	std::string nick = "nickc" + ss.str();
+	std::string user = "userc" + ss.str();
 
 	client.setnName(nick);
 	client.setuName(user);
@@ -167,8 +163,7 @@ void Server::addClient() {
 
 	clients.push_back(client); //-> add the client to the vector of clients
 	pollfds.push_back(NewPoll); //-> add the client socket to the pollfd
-	displayClient();
-	std::cout << "done" << std::endl;
+	// displayClient();
 }
 
 // basic function for removing client
@@ -254,8 +249,17 @@ void Server::displayClient() {
 }
 
 void Server::displayChannel() {
-	for (size_t i = 0; i < channels.size(); ++i) {
-		std::cout << "channel name : " << channels[i].getchannelName() << std::endl;
+	// for (size_t i = 0; i < channels.size(); ++i) {
+	// 	std::cout << "channel name : " << channels[i].getchannelName() << std::endl;
+	// 	for (size_t i = 0; i < channels[i].clientlist.size(); ++i) {
+	// 		std::cout << "Client user name: " << channels[i].clientlist[i].getuName() << std::endl;
+	// 	}
+	// }
+	if (channels.size() < 1)
+		return;
+	std::vector<class Client> tmp = channels[0].getclientList();
+	for (size_t i = 0; i < tmp.size(); ++i){
+		std::cout << "Client user name: " << tmp[i].getuName() << std::endl;
 	}
 }
 
@@ -326,8 +330,12 @@ void Server::joinPass(Channel* chName, const char* key, Client* cl){
 }
 
 void Server::kickCMD(std::vector<std::string> line, Client* cl){
+	if (line.size() < 3){
+		std::cout << "KICK command not enough param" << std::endl;
+		return ;
+	}
 	if(!isChannel(line[1])){
-		std::cout << "Channel doesnt exit" << std::endl;
+		std::cout << "Channel doesnt exist" << std::endl;
 		return ;
 	}
 	Channel* tmpch = getChannel(line[1]);
@@ -337,10 +345,13 @@ void Server::kickCMD(std::vector<std::string> line, Client* cl){
 		std::cout << "Client not found" << std::endl;
 		return ;
 	}
-	if (tmpch->checkclientExist(removeCl)){
-		tmpch->removeClient(removeCl);
-		std::cout << "KICK message on channel " << tmpch->getchannelName() << " from " << cl->getuName() << " to remove " << removeCl->getuName() << " from channel" << std::endl;
-	}
+	if (tmpch->checkclientExist(cl) && tmpch->checkclientOper(cl))  {
+		if (tmpch->checkclientExist(removeCl)){
+			tmpch->removeClient(removeCl);
+			std::cout << "KICK message on channel " << tmpch->getchannelName() << " from " << cl->getuName() << " to remove " << removeCl->getuName() << " from channel" << std::endl;
+		}
+	} else
+		std::cout << "Client not in channel or not operator" << std::endl;
 }
 
 void sigma(int signum) {

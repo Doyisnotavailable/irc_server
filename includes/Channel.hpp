@@ -40,9 +40,11 @@ class Channel {
 		bool getclientFlag();
 		int getclientSize();
 		int getlimit();
+		std::vector<class Client> getclientList();
 		// ------------------ //
 
 		bool checkclientExist(Client* cl);
+		bool checkclientOper(Client* cl);
 		bool joinFlags(); //function to check if any of a flag is true when joining
 		void removeClient(Client *cl);
 };
