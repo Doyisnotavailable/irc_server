@@ -10,6 +10,7 @@ Client::Client() {
 	this->nName = "";
 	this->uName = "";
 	this->ipAdd = "";
+	this->isCapNegotiated = false;
 }
 
 Client::~Client() {
@@ -24,6 +25,7 @@ Client& Client::operator=(const Client& toasgn){
 		uName = toasgn.uName;
 		ipAdd = toasgn.ipAdd;
 		clientChannelList = toasgn.clientChannelList;
+		isCapNegotiated = toasgn.isCapNegotiated;
 	}
 	return *this;
 }
@@ -52,6 +54,10 @@ std::vector<class Channel> Client::getlist() const {
 	return this->clientChannelList;
 }
 
+bool Client::getisCapNegotiated() const {
+	return this->isCapNegotiated;
+}
+
 void Client::setfd(int fd) {
 	this->fd = fd;
 }
@@ -70,6 +76,10 @@ void Client::setuName(const std::string& str) {
 
 void Client::setipAdd(const std::string& str) {
 	this->ipAdd = str;
+}
+
+void Client::setisCapNegotiated(bool flag) {
+	this->isCapNegotiated = flag;
 }
 
 void Client::addChannel(const Channel& ch) {

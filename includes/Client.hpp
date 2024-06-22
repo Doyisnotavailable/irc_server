@@ -15,6 +15,8 @@ class Client {
         std::string     uName; // username 
         std::string     ipAdd; // ip address
 		std::vector<class Channel> clientChannelList;
+
+        bool isCapNegotiated;
     public:
         Client();
         ~Client();
@@ -25,6 +27,7 @@ class Client {
         std::string getnName() const;
         std::string getuName() const;
         std::string getipAdd() const;
+        bool    getisCapNegotiated() const;
 		std::vector<class Channel> getlist() const;
 
 		void setfd(int fd);
@@ -32,6 +35,7 @@ class Client {
 		void setnName(const std::string& str);
 		void setuName(const std::string& str);
 		void setipAdd(const std::string& str);
+        void setisCapNegotiated(bool flag);
         // ------------------//
         void removeChannel(const Channel& ch);
 
