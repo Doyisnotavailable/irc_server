@@ -66,6 +66,23 @@ class Server {
         // tester utils
 		void displayChannel();
 		void displayClient();
+
+
+        // Capability Negotiation and new client registration
+        void sendCapabilities(int fd);
+        void handlePass(int fd, const std::vector<std::string>& vec);
+        void handleNick(int fd, const std::vector<std::string>& vec);
+        void handleUser(int fd, const std::vector<std::string>& vec);
+        int handleCommand(int fd, std::vector<std::string>& vec);
+
+        // Utils added
+        std::vector<std::string> splitCmd(const std::string& str);
+        Client* getClientByFd(int fd);
+        ssize_t sendToClient(int fd, const std::string& msg);
+        void setClientInfo(int fd);
+        void sendWelcome(int fd, Client* client);
+        void doCAP(Client* client, std::vector<std::string>& vec, int fd);
+
 };
 
 	void sigma(int signum);
