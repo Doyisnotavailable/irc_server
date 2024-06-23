@@ -26,7 +26,7 @@ class Server {
         std::string pass; // pass needed to connect to the server
         int port;
         int serverfd;
-        bool stopflag;
+        int stopflag;
         std::vector<class Client> clients;  // all of  the clients in server
         std::vector<class Channel> channels; // channels available in all server
         std::vector<struct pollfd> pollfds; // used for i/o of fds
@@ -70,7 +70,7 @@ class Server {
 
         // Capability Negotiation and new client registration
         void sendCapabilities(int fd);
-        void handlePass(int fd, const std::vector<std::string>& vec);
+        int handlePass(int fd, const std::vector<std::string>& vec);
         void handleNick(int fd, const std::vector<std::string>& vec);
         void handleUser(int fd, const std::vector<std::string>& vec);
         int handleCommand(int fd, std::vector<std::string>& vec);
@@ -82,8 +82,10 @@ class Server {
         void setClientInfo(int fd);
         void sendWelcome(int fd, Client* client);
         void doCAP(Client* client, std::vector<std::string>& vec, int fd);
+        bool isNickValid(const std::string& nick);
 
 };
 
-	void sigma(int signum);
+void sigHandler(int signum);
+
 #endif
