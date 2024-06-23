@@ -84,6 +84,9 @@ class Server {
         void doCAP(Client* client, std::vector<std::string>& vec, int fd);
         bool isNickValid(const std::string& nick);
 
+        // Channel commands
+        void topicCMD(std::vector<std::string>& vec, Client* cl);
+
 };
 
 void sigHandler(int signum);

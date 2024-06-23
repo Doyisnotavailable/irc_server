@@ -18,7 +18,7 @@ Server::Server(std::string port, std::string pass) {
         if (!std::isdigit(pass[i]))
             throw InvalidInput();
     }
-
+ 
     // if (!std::all_of(port.begin(), port.end(), std::isdigit()))
     //     throw InvalidInput();
     // if(!std::all_of(pass.begin(), pass.end(), std::isalnum()))
@@ -154,6 +154,53 @@ void Server::sendWelcome(int fd, Client* client) {
 	client->setisCapNegotiated(true);
 }
 
+void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
+
+	if (vec.size() == 2) {
+		Channel *channel = getChannel(vec[1]);
+
+		if (!channel) {
+			sendToClient(cl->getfd(), "403 * " + vec[1] + " :No such channel\r\n");
+			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
+			return ;
+		} else {
+			sendToClient(cl->getfd(), "332 * " + channel->getchannelName() + " :" + channel->getTopic() + "\r\n");
+			return ;
+		}
+	}
+
+	if (vec.size() < 3) {
+		sendToClient(cl->getfd(), "461 * TOPIC :Not enough parameters\r\n");
+		std::cerr << "Invalid TOPIC command format from client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+
+	Channel *channel = getChannel(vec[1]);
+	if (!channel) {
+		sendToClient(cl->getfd(), "403 * " + vec[1] + " :No such channel\r\n");
+		std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+
+	if (!channel->checkclientExist(cl)) {
+		sendToClient(cl->getfd(), "442 * " + vec[1] + " :You're not on that channel\r\n");
+		std::cerr << "Client is not in the channel for client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+
+	std::string newTopic = vec[2];
+	for (size_t i = 3; i < vec.size(); i++) {
+		newTopic += " " + vec[i];
+	}
+
+	channel->setTopic(newTopic);
+	for (size_t i = 0; i < channel->getclientList().size(); i++) {
+		sendToClient(channel->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + channel->getchannelName() + " :" + newTopic + "\r\n");
+	}
+
+	// sendToClient(cl->getfd(), ":" + cl->getnName() + " TOPIC " + channel->getchannelName() + " :" + newTopic + "\r\n");
+	return ;
+}
 
 void Server::checkReceived(std::string str, Client* cl) {
 
@@ -164,8 +211,10 @@ void Server::checkReceived(std::string str, Client* cl) {
 		joinCMD(line, cl);
 	else if (line[0] == "KICK")
 		kickCMD(line, cl);
-	else if (line[0] == "TOPIC")
+	else if (line[0] == "TOPIC") {
 		std::cout << "process topic command" << std::endl;
+		topicCMD(line, cl);
+	}
 	else if (line[0] == "MODE")
 		std::cout << "process mode command" << std::endl;
 	else
@@ -526,7 +575,7 @@ bool Server::isNickValid(const std::string& nick) {
 		return false;
 	}
 	for (size_t i = 0; i < nick.length(); i++) {
-        if (!isalnum(nick[i]) && !strchr("[]{}\\|", nick[i])) { // check if the nickname contains disallowed characters
+        if (!isalnum(nick[i]) && !strchr("[]{}\\|-_", nick[i])) { // check if the nickname contains disallowed characters
 			return false;
 		}
     }
