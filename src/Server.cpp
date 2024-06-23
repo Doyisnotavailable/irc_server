@@ -125,8 +125,8 @@ void Server::receive(int fd) {
 		else
 			sendWelcome(fd, client); // Send welcome message to the client(Neccessary for the client to start the connection.)
 
-		displayChannel();
 	}
+		displayChannel();
 }
 
 // Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.
@@ -189,28 +189,10 @@ void Server::addClient() {
 
 	client.setfd(clientfd); //-> set the client file descriptor
 	client.setipAdd(inet_ntoa((cliadd.sin_addr))); //-> convert the ip address to string and set it
-	
-	// this brackets are for testing purposes
-	// {
-	// std::stringstream ss;
-	// ss << clientfd;
-	// std::string nick = "nickc" + ss.str();
-	// std::string user = "userc" + ss.str();
-
-	// client.setnName(nick);
-	// client.setuName(user);
-	// }
-
 	clients.push_back(client); //-> add the client to the vector of clients
 	pollfds.push_back(NewPoll); //-> add the client socket to the pollfd
 	// displayClient();
 }
-
-// basic function for removing client
-/* cases to handle when removing client 
-	remove client in every channels he exists
-	if the client is the only one guy left in the channel delete the channel as well
-*/ 
 
 void Server::removeClient(int fd) {
 	
