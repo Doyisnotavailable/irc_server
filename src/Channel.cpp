@@ -117,3 +117,11 @@ void Channel::removeClient(Client* cl){
 	}
 	cl->removeChannel(*this);
 }
+
+std::string Channel::getTopic() const {
+	return this->topic;
+}
+
+void Channel::setTopic(const std::string& top) {
+	this->topic = top;
+}

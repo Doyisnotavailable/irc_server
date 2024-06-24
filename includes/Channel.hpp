@@ -47,6 +47,9 @@ class Channel {
 		bool checkclientOper(Client* cl);
 		bool joinFlags(); //function to check if any of a flag is true when joining
 		void removeClient(Client *cl);
+
+		std::string getTopic() const;
+		void  setTopic(const std::string& top);
 };
 
 #endif
