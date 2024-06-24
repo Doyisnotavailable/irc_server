@@ -4,7 +4,7 @@
 #include <poll.h>
 #include <cstring>
 
-bool stopfl = false;
+bool stopflag = 0;
 Server::Server(std::string port, std::string pass) {
     if (port.empty() || pass.empty()) {
 		throw emptyArg();
@@ -18,7 +18,7 @@ Server::Server(std::string port, std::string pass) {
         if (!std::isdigit(pass[i]))
             throw InvalidInput();
     }
-
+ 
     // if (!std::all_of(port.begin(), port.end(), std::isdigit()))
     //     throw InvalidInput();
     // if(!std::all_of(pass.begin(), pass.end(), std::isalnum()))
@@ -79,9 +79,11 @@ void Server::initserverSock() {
 void Server::startServer() {
     std::cout << "Starting Server" << std::endl;
 
-	std::signal(SIGINT, sigma);
-    while (stopfl == false) {
-        if (poll(&pollfds[0], pollfds.size(), -1) == -1 && stopfl == false)
+	std::signal(SIGINT, sigHandler);
+    while (!stopflag) {
+		// if (stopflag)
+		// 	break; // We may want to use exit if we are not allocating memory on the heap (Bc Shit is printing Invalid input after signal)
+        if (poll(&pollfds[0], pollfds.size(), -1) == -1)
             throw InvalidInput();
 
         for (size_t i = 0; i < pollfds.size(); i++) {
@@ -152,6 +154,53 @@ void Server::sendWelcome(int fd, Client* client) {
 	client->setisCapNegotiated(true);
 }
 
+void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
+
+	if (vec.size() == 2) {
+		Channel *channel = getChannel(vec[1]);
+
+		if (!channel) {
+			sendToClient(cl->getfd(), "403 * " + vec[1] + " :No such channel\r\n");
+			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
+			return ;
+		} else {
+			sendToClient(cl->getfd(), "332 * " + channel->getchannelName() + " :" + channel->getTopic() + "\r\n");
+			return ;
+		}
+	}
+
+	if (vec.size() < 3) {
+		sendToClient(cl->getfd(), "461 * TOPIC :Not enough parameters\r\n");
+		std::cerr << "Invalid TOPIC command format from client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+
+	Channel *channel = getChannel(vec[1]);
+	if (!channel) {
+		sendToClient(cl->getfd(), "403 * " + vec[1] + " :No such channel\r\n");
+		std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+
+	if (!channel->checkclientExist(cl)) {
+		sendToClient(cl->getfd(), "442 * " + vec[1] + " :You're not on that channel\r\n");
+		std::cerr << "Client is not in the channel for client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+
+	std::string newTopic = vec[2];
+	for (size_t i = 3; i < vec.size(); i++) {
+		newTopic += " " + vec[i];
+	}
+
+	channel->setTopic(newTopic);
+	for (size_t i = 0; i < channel->getclientList().size(); i++) {
+		sendToClient(channel->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + channel->getchannelName() + " :" + newTopic + "\r\n");
+	}
+
+	// sendToClient(cl->getfd(), ":" + cl->getnName() + " TOPIC " + channel->getchannelName() + " :" + newTopic + "\r\n");
+	return ;
+}
 
 void Server::checkReceived(std::string str, Client* cl) {
 
@@ -162,8 +211,10 @@ void Server::checkReceived(std::string str, Client* cl) {
 		joinCMD(line, cl);
 	else if (line[0] == "KICK")
 		kickCMD(line, cl);
-	else if (line[0] == "TOPIC")
+	else if (line[0] == "TOPIC") {
 		std::cout << "process topic command" << std::endl;
+		topicCMD(line, cl);
+	}
 	else if (line[0] == "MODE")
 		std::cout << "process mode command" << std::endl;
 	else
@@ -394,9 +445,10 @@ void Server::kickCMD(std::vector<std::string> line, Client* cl){
 		std::cout << "Client not in channel or not operator" << std::endl;
 }
 
-void sigma(int signum) {
+void sigHandler(int signum) {
 	(void)signum;
-	stopfl = true;
+	stopflag = true;
+	std::cout << "\nServer is shutting down" << std::endl;
 }
 
 
@@ -441,8 +493,10 @@ int Server::handleCommand(int fd, std::vector<std::string>& vec) {
 		return 0;
 	}
 	for (size_t i = 0; i < vec.size(); i++) {
-		if (vec[0] == "PASS" || vec[0] == "pass") 
-			handlePass(fd, vec);
+		if (vec[0] == "PASS" || vec[0] == "pass") {
+			if (!handlePass(fd, vec))
+				return 0;
+		}
 		else if (vec[0] == "NICK" || vec[0] == "nick") 
 			handleNick(fd, vec);
 		else if (vec[0] == "USER" || vec[0] == "user") 
@@ -451,6 +505,7 @@ int Server::handleCommand(int fd, std::vector<std::string>& vec) {
 			sendToClient(fd,  "PONG " + vec[1] + "\"\r\n");
 		else if (vec[0] == "QUIT") {
 			std::cout << "Client [" << getClientByFd(fd)->getnName() << "] has quit" << std::endl;
+			std::cout << "Quit : " << vec[1] << std::endl;
 			return (removeClient(fd), close(fd), 0);
 		} else if (vec[0] == "CAP" || vec[0] == "cap")
 			doCAP(client, vec, fd);
@@ -485,24 +540,46 @@ void Server::doCAP(Client* client, std::vector<std::string>& vec, int fd) {
 }
 
 // Handle the PASS command from the client. Remove the client if the password is incorrect.
-void Server::handlePass(int fd, const std::vector<std::string>& vec) {
+int Server::handlePass(int fd, const std::vector<std::string>& vec) {
 
 	if (vec.size() < 2) {
+		sendToClient(fd, "461 * PASS :Not enough parameters\r\n");
 		std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
 		removeClient(fd);
 		close(fd);
-		return;
+		return 0;
 	}
 
 	if (vec[1] == this->pass) {
 		std::cout << "Password is correct for client [" << fd << "]" << std::endl;
+		return 1;
 	} else {
+		sendToClient(fd, "464 * :Password incorrect\r\n");
 		std::cerr << "Password is incorrect for client [" << fd << "]" << std::endl;
-		std::cout << "Password entered = " << vec[1] << " and password = " << this->pass << std::endl;
-		sendToClient(fd, "ERROR :Invalid password\r\n");
+		// std::cout << "Password entered = " << vec[1] << " and password = " << this->pass << std::endl;
 		removeClient(fd);
 		close(fd);
+		return 0;
 	}
+}
+
+
+bool Server::isNickValid(const std::string& nick) {
+	if (nick.empty() || nick[0] == '\0') { // check if the nickname is empty
+		return false;
+	}
+	if (nick.length() > 30) { // check if the nickname is too long. The maximum length is 30 characters(There is no official limit, used for testing purposes).
+		return false;
+	}
+	if (nick[0] == '#' || isdigit(nick[0]) || nick[0] == ':') { // check if the nickname starts with a disallowed character (: is OK with irssi)
+		return false;
+	}
+	for (size_t i = 0; i < nick.length(); i++) {
+        if (!isalnum(nick[i]) && !strchr("[]{}\\|-_", nick[i])) { // check if the nickname contains disallowed characters
+			return false;
+		}
+    }
+	return true;
 }
 
 // Handle the NICK command from the client. Set the nickname for the client.
@@ -511,28 +588,30 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 
 	if (vec.size() < 2) {
 		sendToClient(fd, "431 * :No nickname given\r\n");
-		std::cerr << "######## Invalid NICK command format from client [" << fd << "]" << std::endl;
+		std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
 		return;
 	}
 
-	if (!vec[1].empty()) {
-		Client *client = getClientByFd(fd);
-
-		for (size_t i = 0; i < clients.size(); i++) {
-			if (clients[i].getnName() == vec[1]) {
-				sendToClient(fd, "433 * " + vec[1] + " :Nickname is already in use\r\n");
-				std::cout << "Error: Nickname already exists" << std::endl;
-				return ;
-			}
-		}
-		std::string oldNick = client->getnName();
-		client->setnName(vec[1]);
-		sendToClient(fd, ":" + oldNick + "!" + getClientByFd(fd)->getuName() + "@" + getClientByFd(fd)->getipAdd() + " NICK " + vec[1] + "\n");
-		std::cout << "Nickname set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
-	} else {
-		sendToClient(fd, "431 * :No nickname given\r\n");
-		std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
+	if (!isNickValid(vec[1])) {
+		sendToClient(fd, "432 * " + vec[1] + " :Erroneous Nickname\r\n");
+		std::cout << "Error: Invalid nickname" << std::endl;
+		return ;
 	}
+
+	Client *client = getClientByFd(fd);
+
+	for (size_t i = 0; i < clients.size(); i++) {
+		if (clients[i].getnName() == vec[1]) {
+			sendToClient(fd, "433 * " + vec[1] + " :Nickname is already in use\r\n");
+			std::cout << "Error: Nickname already exists" << std::endl;
+			return ;
+		}
+	}
+	std::string oldNick = client->getnName();
+	client->setnName(vec[1]);
+	sendToClient(fd, oldNick + "changed thier nickname to " + vec[1] + "\r\n");
+	sendToClient(fd, ":" + oldNick + "!" + getClientByFd(fd)->getuName() + "@" + getClientByFd(fd)->getipAdd() + " NICK " + vec[1] + "\n");
+	std::cout << "Nickname set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
 }
 
 

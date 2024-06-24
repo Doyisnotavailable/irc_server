@@ -20,7 +20,8 @@ int main(int ac, char **av) {
             return 1;
         }
         return 0;
-	}
-	std::cout << "Nice input" << std::endl;
+	} else
+        std::cerr << "Erorr: Usage: ./ircserv <port> <password>\n";
+	
     return 1;
 }
