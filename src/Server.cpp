@@ -216,7 +216,9 @@ void Server::checkReceived(std::string str, Client* cl) {
 		topicCMD(line, cl);
 	}
 	else if (line[0] == "MODE")
-		std::cout << "process mode command" << std::endl;
+		modeCMD(line, cl);
+	else if (line[0] == "PRIVMSG")
+		privCMD(line, cl);
 	else
 		std::cout << "wtf are you typing " << cl->getnName() << std::endl;
 }
@@ -262,11 +264,6 @@ void Server::removeClient(int fd) {
 
 
 }
-
-// void Server::removeClientAllChannels(int fd) {
-// 	std::vector<Channel> tmp = client[]
-// }
-
 
 void Server::addChannel(const std::string& chName, Client& cl) {
 	
@@ -322,12 +319,6 @@ void Server::displayClient() {
 }
 
 void Server::displayChannel() {
-	// for (size_t i = 0; i < channels.size(); ++i) {
-	// 	std::cout << "channel name : " << channels[i].getchannelName() << std::endl;
-	// 	for (size_t i = 0; i < channels[i].clientlist.size(); ++i) {
-	// 		std::cout << "Client user name: " << channels[i].clientlist[i].getuName() << std::endl;
-	// 	}
-	// }
 	if (channels.size() < 1)
 		return;
 	std::vector<class Client> tmp = channels[0].getclientList();
@@ -427,14 +418,117 @@ void Server::kickCMD(std::vector<std::string> line, Client* cl){
 		std::cout << "Client not in channel or not operator" << std::endl;
 }
 
-void sigHandler(int signum) {
-	(void)signum;
-	stopflag = true;
-	std::cout << "\nServer is shutting down" << std::endl;
+void Server::privCMD(std::vector<std::string> line, Client* cl){
+	//PRIVMSG target,target :msgtosend
+	//line[0]      line[1]      line[2 till the end];
+
+	if (line.size() > 2) {
+		const char* tmp = line[2].c_str();
+		if (tmp[0] != ':') {
+			std::cerr << "Invalid msg param" << std::endl;
+			return ;
+		}
+		std::vector<std::string> target = ::split(line[1], ',');
+		std::string tosend = addStrings(line, 2);
+		for (size_t i = 0; i < target.size(); ++i){
+			tmp = target[i].c_str();
+			if (tmp[0] == '#'){
+				Channel *tmpch = getChannel(target[i]);
+				privCMDsendtoChannel(tmpch, cl, tosend);
+				continue ;
+			}
+			Client* receiver = getClient(target[i]);
+			if (receiver == NULL || cl == NULL)
+				continue ;
+			sendToClient(receiver->getfd(), cl->getuName() + " PRIVMSG " + receiver->getuName() + tosend);
+		}
+	} else
+		std::cout << "Invalid use of priv" << std::endl;
 }
 
+/* :Angel PRIVMSG Wiz :Hello are you receiving this message ?
+    message output format supposed to be
+	clientname PRIVMSG targetname :message
+	*/
 
-//  NEW FUNCTIONS ADDED //
+void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
+	if (ch == NULL || cl == NULL)
+		return ;
+	std::vector<class Client> tmplist = ch->getclientList();
+	for (size_t i = 0; i < tmplist.size(); ++i){
+		if (cl->getfd() == tmplist[i].getfd())
+			continue ;
+		sendToClient(tmplist[i].getfd(), cl->getuName() + " PRIVMSG " + tmplist[i].getuName() + tosend);
+	}
+}
+
+void Server::modeCMD(std::vector<std::string> line, Client* cl){
+	// line[0] = MODE line[1] = CHANNELname line[2] = modestring line[3]... = param
+
+	if (line.size() > 3){
+		Channel* ch = getChannel(line[1]);
+		if (ch == NULL){
+			sendToClient(cl->getfd(), cl->getuName() + " " + line[1] + " :No such channel\r\n");
+			return ;
+		}
+		if (!ch->checkclientOper(cl)){
+			sendToClient(cl->getfd(), cl->getuName() + " " + ch->getchannelName() + " :You're not channel operator");
+			return ;
+		}
+		const char* modestring = line[2].c_str();
+		char c = '\0';
+		size_t param = 3;
+		for (size_t i = 0; modestring[i]; ++i){
+			if (modestring[i] == '-' || modestring[i] == '+')
+				c = modestring[i];
+			if (c == '-'){
+				switch(modestring[i]){
+					case 'i':
+						ch->setinvFlag(false);
+						break ;
+					case 't':
+						ch->settopicFlag(false);
+						break ;
+					case 'k':
+						ch->setkeyFlag(false);
+						break ;
+					case 'o':
+						if (param >= line.size())
+							break ;
+						ch->setClientOper(getClient(line[param]), modestring[i]);
+						param++;
+						break ;
+					case 'l':
+						ch->setclientFlag(false);
+						break ;
+				}
+			} else if (c == '+'){
+				switch(modestring[i]){
+					case 'i':
+						ch->setinvFlag(true);
+						break ;
+					case 't':
+						ch->settopicFlag(true);
+						break ;
+					case 'k':
+						ch->setkeyFlag(true);
+						break ;
+					case 'o':
+						if (param >= line.size())
+							break ;
+						ch->setClientOper(getClient(line[param]), modestring[i]);
+						param++;
+						break ;
+					case 'l':
+						ch->setclientFlag(true);
+						break ;
+				}
+			}
+		}
+	}
+	else
+		sendToClient(cl->getfd(), "Invalid use of MODE\r\n");
+}
 
 void Server::sendCapabilities(int fd) {
 
@@ -633,6 +727,17 @@ ssize_t Server::sendToClient(int fd, const std::string& msg) {
 	return sentBytes;
 }
 
+void Server::sendToChannel(Channel& ch, const std::string& msg){
+	
+	if (isChannel(ch.getchannelName())){
+		std::vector<class Client> tmp = ch.getclientList();
+		for (size_t i = 0; tmp.size(); ++i){
+			sendToClient(tmp[i].getfd(), msg);
+		}
+	} else
+		std::cout << "Channel doesnt exist" << std::endl;
+}
+
 // Split the command string into a vector of strings. Clears empty strings and returns the vector.
 std::vector<std::string> Server::splitCmd(const std::string& str) {
 	std::vector<std::string> vec;
@@ -649,7 +754,6 @@ std::vector<std::string> Server::splitCmd(const std::string& str) {
 	}
 	if (!tmp.empty())
 		vec.push_back(tmp);
-
 	// Remove empty strings from the vector.
 	for (std::vector<std::string>::iterator it = vec.begin(); it != vec.end();) {
 		if (it->empty()	|| *it == "\r" || *it == "\n") {
@@ -683,4 +787,19 @@ void Server::setClientInfo(int fd) {
 			sendCapabilities(fd); // Send the capabilities to the client.
 		}
 	}
+}
+
+std::string Server::addStrings(std::vector<std::string> lines, size_t i) {
+	std::string tmp;
+	for (size_t j = i; j < lines.size(); ++j){
+		tmp += lines[j];
+	}
+	tmp += "\r\n";
+	return tmp;
+}
+
+void sigHandler(int signum) {
+	(void)signum;
+	stopflag = true;
+	std::cout << "\nServer is shutting down" << std::endl;
 }

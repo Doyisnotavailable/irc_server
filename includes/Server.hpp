@@ -62,7 +62,9 @@ class Server {
         void joinChannel(std::string chName, const char* key, Client* cl);
         void joinPass(Channel* chName, const char* key, Client* cl);
 		void kickCMD(std::vector<std::string> line, Client* cl);
-        
+        void privCMD(std::vector<std::string> line, Client* cl);
+        void privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend);
+        void modeCMD(std::vector<std::string> line, Client *cl);
         // tester utils
 		void displayChannel();
 		void displayClient();
@@ -82,7 +84,9 @@ class Server {
         void setClientInfo(int fd);
         void sendWelcome(int fd, Client* client);
         void doCAP(Client* client, std::vector<std::string>& vec, int fd);
+        void sendToChannel(Channel& ch, const std::string& msg);
         bool isNickValid(const std::string& nick);
+        std::string addStrings(std::vector<std::string> lines, size_t i);
 
         // Channel commands
         void topicCMD(std::vector<std::string>& vec, Client* cl);

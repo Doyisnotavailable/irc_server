@@ -125,3 +125,36 @@ std::string Channel::getTopic() const {
 void Channel::setTopic(const std::string& top) {
 	this->topic = top;
 }
+
+void Channel::setinvFlag(bool a){
+	this->invFlag = a;
+}
+
+void Channel::setkeyFlag(bool a){
+	this->keyFlag = a;
+}
+
+void Channel::settopicFlag(bool a){
+	this->topicFlag = a;
+}
+
+void Channel::setclientFlag(bool a){
+	this->clientFlag = a;
+}
+
+void Channel::setClientOper(Client* cl, char c){
+	if (cl == NULL)
+		return ;
+	if (c == '-'){
+		for (size_t i = 0; i < operlist.size(); ++i){
+			if (cl->getfd() == operlist[i].getfd()){
+				operlist.erase(operlist.begin() + i);
+			}
+		}
+	}
+	else if (c == '+'){
+		if (!checkclientOper(cl)){
+			operlist.push_back(*cl);
+		}
+	}
+}
