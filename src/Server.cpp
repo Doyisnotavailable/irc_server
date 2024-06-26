@@ -434,7 +434,10 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 			tmp = target[i].c_str();
 			if (tmp[0] == '#'){
 				Channel *tmpch = getChannel(target[i]);
-				privCMDsendtoChannel(tmpch, cl, tosend);
+				if (tmpch->checkclientExist(cl))
+					privCMDsendtoChannel(tmpch, cl, tosend);
+				else
+					sendToClient(cl->getfd(), cl->getuName() + " " + tmpch->getchannelName() + " :Cannot send to channel\r\n");
 				continue ;
 			}
 			Client* receiver = getClient(target[i]);
@@ -512,6 +515,7 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						break ;
 					case 'k':
 						ch->setkeyFlag(true);
+						//have to take param for key and set it
 						break ;
 					case 'o':
 						if (param >= line.size())
@@ -521,6 +525,7 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						break ;
 					case 'l':
 						ch->setclientFlag(true);
+						//have to take param for amount of client and set it
 						break ;
 				}
 			}
