@@ -65,17 +65,20 @@ class Server {
         void privCMD(std::vector<std::string> line, Client* cl);
         void privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend);
         void modeCMD(std::vector<std::string> line, Client *cl);
+        void pingCMD(std::vector<std::string> line, Client* cl);
+        void quitCMD(std::vector<std::string> line, Client* cl);
         // tester utils
 		void displayChannel();
 		void displayClient();
 
 
         // Capability Negotiation and new client registration
-        void sendCapabilities(int fd);
-        int handlePass(int fd, const std::vector<std::string>& vec);
+        int  handlePass(int fd, const std::vector<std::string>& vec);
         void handleNick(int fd, const std::vector<std::string>& vec);
         void handleUser(int fd, const std::vector<std::string>& vec);
-        int handleCommand(int fd, std::vector<std::string>& vec);
+        int  handleCommand(int fd, std::vector<std::string>& vec);
+        void capCMD(Client* client, std::vector<std::string>& vec, int fd);
+        void sendCapabilities(int fd);
 
         // Utils added
         std::vector<std::string> splitCmd(const std::string& str);
@@ -83,7 +86,6 @@ class Server {
         ssize_t sendToClient(int fd, const std::string& msg);
         void setClientInfo(int fd);
         void sendWelcome(int fd, Client* client);
-        void doCAP(Client* client, std::vector<std::string>& vec, int fd);
         void sendToChannel(Channel& ch, const std::string& msg);
         bool isNickValid(const std::string& nick);
         std::string addStrings(std::vector<std::string> lines, size_t i);
