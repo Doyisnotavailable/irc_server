@@ -295,7 +295,7 @@ Client* Server::getClient(int fd) {
 
 Client* Server::getClient(const std::string& name){
 	for (size_t i = 0; i < this->clients.size(); ++i){
-		if (this->clients[i].getuName() == name)
+		if (this->clients[i].getnName() == name)
 			return &clients[i];
 	}
 	return NULL;
@@ -437,13 +437,13 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 				if (tmpch->checkclientExist(cl))
 					privCMDsendtoChannel(tmpch, cl, tosend);
 				else
-					sendToClient(cl->getfd(), cl->getuName() + " " + tmpch->getchannelName() + " :Cannot send to channel\r\n");
+					sendToClient(cl->getfd(), cl->getnName() + " " + tmpch->getchannelName() + " :Cannot send to channel\r\n");
 				continue ;
 			}
 			Client* receiver = getClient(target[i]);
 			if (receiver == NULL || cl == NULL)
 				continue ;
-			sendToClient(receiver->getfd(), cl->getuName() + " PRIVMSG " + receiver->getuName() + tosend);
+			sendToClient(receiver->getfd(), cl->getnName() + " PRIVMSG " + receiver->getnName() + tosend);
 		}
 	} else
 		std::cout << "Invalid use of priv" << std::endl;
@@ -461,7 +461,7 @@ void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
 	for (size_t i = 0; i < tmplist.size(); ++i){
 		if (cl->getfd() == tmplist[i].getfd())
 			continue ;
-		sendToClient(tmplist[i].getfd(), cl->getuName() + " PRIVMSG " + tmplist[i].getuName() + tosend);
+		sendToClient(tmplist[i].getfd(), cl->getnName() + " PRIVMSG " + tmplist[i].getnName() + tosend);
 	}
 }
 
