@@ -9,4 +9,5 @@ std::vector<std::string> split(const std::string& str, char delimiter);
 // std::string ltrim(const std::string &s);
 // std::string rtrim(const std::string &s);
 std::string trim(const std::string &s);
+bool checkpass(std::string& pass);
 #endif

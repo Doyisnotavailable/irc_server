@@ -142,6 +142,14 @@ void Channel::setclientFlag(bool a){
 	this->clientFlag = a;
 }
 
+void Channel::setLimit(int i){
+	this->limit = i;
+}
+
+void Channel::setKey(std::string str){
+	this->key = str;
+}
+
 void Channel::setClientOper(Client* cl, char c){
 	if (cl == NULL)
 		return ;

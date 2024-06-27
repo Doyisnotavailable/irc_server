@@ -4,7 +4,7 @@
 #include <poll.h>
 #include <cstring>
 
-bool stopflag = 0;
+bool stopflag = false;
 Server::Server(std::string port, std::string pass) {
     if (port.empty() || pass.empty()) {
 		throw emptyArg();
@@ -80,12 +80,9 @@ void Server::startServer() {
     std::cout << "Starting Server" << std::endl;
 
 	std::signal(SIGINT, sigHandler);
-    while (!stopflag) {
-		// if (stopflag)
-		// 	break; // We may want to use exit if we are not allocating memory on the heap (Bc Shit is printing Invalid input after signal)
-        if (poll(&pollfds[0], pollfds.size(), -1) == -1)
-            throw InvalidInput();
-
+    while (::stopflag == false) {
+        if (poll(&pollfds[0], pollfds.size(), -1) == -1 && stopflag == true)
+            throw::InvalidInput();
         for (size_t i = 0; i < pollfds.size(); i++) {
             if (pollfds[i].revents && POLLIN && !stopflag) {
                 if (pollfds[i].fd == serverfd)
@@ -581,8 +578,10 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						ch->settopicFlag(true);
 						break ;
 					case 'k':
-						ch->setkeyFlag(true);
-						//have to take param for key and set it
+						if (param >= line.size())
+							break ;
+						setChannelKey(ch, cl, line[param]);
+						param++;
 						break ;
 					case 'o':
 						if (param >= line.size())
@@ -591,8 +590,13 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						param++;
 						break ;
 					case 'l':
-						ch->setclientFlag(true);
-						//have to take param for amount of client and set it
+						if (param >= line.size())
+							break ;
+						if (!setChannelLimit(ch, cl, line[param]))
+							sendToChannel(*ch, "changing limit successful msg");
+						else
+							sendToClient(cl->getfd(), "fail");
+						param++;
 						break ;
 				}
 			}
@@ -602,6 +606,33 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 		sendToClient(cl->getfd(), "461 * MODE :Not enough parameters\r\n");
 		// sendToClient(cl->getfd(), "Invalid use of MODE\r\n");
 	}
+}
+
+int Server::setChannelLimit(Channel* chName, Client *cl, std::string str){
+	char *ptr;
+	long num = std::strtol(str.c_str(), &ptr, 10);
+
+	if (num <= 0 || num > std::numeric_limits<int>::max()) {
+		sendToClient(cl->getfd(), "Client limit amount exceeds INT_MAX\r\n");
+		return -1;
+	}
+	else {
+		chName->setLimit(num);
+		chName->setclientFlag(true);
+		return 0;
+	}
+}
+
+void Server::setChannelKey(Channel* ch, Client* cl, std::string str){
+	//check str for alphanumerical and empty.
+	// ERR_INVALIDKEY (525) 
+	if(!checkpass(str)) {
+		sendToClient(cl->getfd(), "525 * :key is not well-formed\r\n");
+		return ;
+	}
+	ch->setKey(str);
+	ch->setkeyFlag(true);
+
 }
 
 void Server::pingCMD(std::vector<std::string> line, Client* cl){
@@ -886,6 +917,6 @@ std::string Server::addStrings(std::vector<std::string> lines, size_t i) {
 
 void sigHandler(int signum) {
 	(void)signum;
-	stopflag = true;
+	::stopflag = true;
 	std::cout << "\nServer is shutting down" << std::endl;
 }

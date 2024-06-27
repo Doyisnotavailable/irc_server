@@ -47,6 +47,8 @@ class Channel {
 		void settopicFlag(bool a);
 		void setclientFlag(bool a);
 		void setClientOper(Client* cl, char c);
+		void setLimit(int i);
+		void setKey(std::string str);
 		// ------------------ //
 
 		bool checkclientExist(Client* cl);

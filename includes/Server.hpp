@@ -57,6 +57,8 @@ class Server {
 		bool isChannel(const std::string& chname);
 
         void addClienttoChannel(Channel* chName, Client* cl);
+		int setChannelLimit(Channel* chName, Client* cl, std::string str);
+		void setChannelKey(Channel* chName, Client* cl, std::string str);
 		// commands
 		void joinCMD(std::vector<std::string> line, Client* cl);
         void joinChannel(std::string chName, const char* key, Client* cl);

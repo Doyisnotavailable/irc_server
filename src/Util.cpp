@@ -1,4 +1,7 @@
 #include "../includes/Util.hpp"
+#include <iostream>
+#include <cctype>
+#include <string>
 
 std::vector<std::string> split(const std::string& str, char delimiter) {
     std::vector<std::string> result;
@@ -35,4 +38,15 @@ std::string rtrim(const std::string &s) {
 // Function to trim both leading and trailing whitespace
 std::string trim(const std::string &s) {
     return ltrim(rtrim(s));
+}
+
+bool checkpass(std::string& str){
+	if (str.empty())
+		return false;
+	for (size_t i = 0; i < str.size(); ++i){
+		char c = str[i];
+		if (!std::isalnum(c) || !std::ispunct(c))
+			return false ;
+	}
+	return true;
 }
