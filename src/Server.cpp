@@ -498,7 +498,7 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 			Client* receiver = getClient(target[i]);
 			if (receiver == NULL || cl == NULL)
 				continue ;
-			sendToClient(receiver->getfd(), cl->getnName() + " PRIVMSG " + receiver->getnName() + tosend);
+			sendToClient(receiver->getfd(), cl->getnName() + " PRIVMSG " + receiver->getnName() + " " + tosend);
 		}
 	} else {
 		sendToClient(cl->getfd(), "461 * PRIVMSG :Not enough parameters\r\n");
@@ -518,7 +518,7 @@ void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
 	for (size_t i = 0; i < tmplist.size(); ++i){
 		if (cl->getfd() == tmplist[i].getfd())
 			continue ;
-		sendToClient(tmplist[i].getfd(), cl->getnName() + " PRIVMSG " + tmplist[i].getnName() + tosend);
+		sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!" + cl->getnName() + "@" + cl->getipAdd() + " PRIVMSG " + ch->getchannelName() + " " + tosend);
 	}
 }
 
