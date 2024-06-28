@@ -95,6 +95,8 @@ class Server {
         // Channel commands
         void topicCMD(std::vector<std::string>& vec, Client* cl);
 
+        // int handleNC(int fd, std::string& str);
+        // int registerNC(int fd, std::string& str);
 };
 
 void sigHandler(int signum);

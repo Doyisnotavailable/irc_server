@@ -17,6 +17,8 @@ class Client {
 		std::vector<class Channel> clientChannelList;
 
         bool isCapNegotiated;
+        bool isPass;
+        bool isNick;
     public:
         Client();
         ~Client();
@@ -28,6 +30,8 @@ class Client {
         std::string getuName() const;
         std::string getipAdd() const;
         bool    getisCapNegotiated() const;
+        bool    getisPass() const;
+        bool    getisNick() const;
 		std::vector<class Channel> getlist() const;
 
 		void setfd(int fd);
@@ -36,6 +40,8 @@ class Client {
 		void setuName(const std::string& str);
 		void setipAdd(const std::string& str);
         void setisCapNegotiated(bool flag);
+        void setisPass(bool flag);
+        void setisNick(bool flag);
         // ------------------//
         void removeChannel(const Channel& ch);
 
