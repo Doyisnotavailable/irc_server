@@ -113,18 +113,27 @@ void Server::receive(int fd) {
 
 		std::vector<std::string> vec = splitCmd(str);
 
+		std::cout << *vec.begin() << std::endl;
+
 		if (vec.empty())
 			return ;
+		Client *client = getClient(fd);
 
-		if (*vec.begin() == "CAP" || *vec.begin() == "PASS" || *vec.begin() == "NICK"
-			|| *vec.begin() == "USER" || *vec.begin() == "PING" || *vec.begin() == "QUIT") {
+		if (!client)
+			return ;
+		if ((*vec.begin() == "CAP" || *vec.begin() == "PASS" || *vec.begin() == "NICK"
+			|| *vec.begin() == "USER" || *vec.begin() == "PING" || *vec.begin() == "QUIT")) {
 			if (!handleCommand(fd, vec)) // handle the commands(PASS, NICK, USER, CAP, PING, QUIT).
 				return ;
 			}
-		else
+		else if (client->getisCapNegotiated() == true || client->getisNick() == true)
 			checkReceived(line, getClient(fd));
+		else {
+			sendToClient(fd, "451 * :You have not registered\r\n");
+			std::cerr << "Client not registered" << std::endl;
+		}
 
-		Client *client = getClient(fd);
+		
 		if (client->getisCapNegotiated() == true || client->getnName().empty() || client->getuName().empty())
 			return;
 		else
@@ -207,6 +216,10 @@ void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
 
 void Server::checkReceived(std::string str, Client* cl) {
 
+	if (cl->getisNick() == false) {
+		sendToClient(cl->getfd(), "451 * :You have not registered\r\n");
+		return ;
+	}
 	std::vector<std::string> line = ::split(str, ' ');
 	if (line[0].empty())
 		return ;
@@ -243,6 +256,7 @@ void Server::addClient() {
 
 	client.setfd(clientfd); //-> set the client file descriptor
 	client.setipAdd(inet_ntoa((cliadd.sin_addr))); //-> convert the ip address to string and set it
+	client.setuName("irc"); //-> set the user name
 	clients.push_back(client); //-> add the client to the vector of clients
 	pollfds.push_back(NewPoll); //-> add the client socket to the pollfd
 	// displayClient();
@@ -613,10 +627,14 @@ void Server::pingCMD(std::vector<std::string> line, Client* cl){
 }
 
 void Server::quitCMD(std::vector<std::string> line, Client* cl){
+	// (void)line;
+	int fd = cl->getfd();
 	std::cout << "Client " << cl->getnName() << " has quit" << std::endl;
-	std::cout << "Quit : " << line[1] << std::endl;
-	removeClient(cl->getfd());
-	close(cl->getfd());
+	if (line.size() > 1) {
+		std::cout << "Quit message: " << line[1] << std::endl;
+	}
+	removeClient(fd);
+	close(fd);
 }
 
 void Server::sendCapabilities(int fd) {
@@ -662,6 +680,11 @@ int Server::handleCommand(int fd, std::vector<std::string>& vec) {
 			if (!handlePass(fd, vec))
 				return 0;
 		}
+		if (getClientByFd(fd)->getisPass() == false) {
+			sendToClient(fd, "451 * :You have not registered\r\n");
+			std::cerr << "Client [" << fd << "] has not registered" << std::endl;
+			return 0;
+		}
 		else if (vec[0] == "NICK" || vec[0] == "nick") 
 			handleNick(fd, vec);
 		else if (vec[0] == "USER" || vec[0] == "user") 
@@ -706,7 +729,11 @@ void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
 // Handle the PASS command from the client. Remove the client if the password is incorrect.
 int Server::handlePass(int fd, const std::vector<std::string>& vec) {
 
-	if (vec.size() < 2) {
+	if (getClientByFd(fd)->getisPass() == true) {
+		return 1;
+	}
+
+	if (vec.size() < 2 || vec[1].empty()) {
 		sendToClient(fd, "461 * PASS :Not enough parameters\r\n");
 		std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
 		removeClient(fd);
@@ -714,7 +741,18 @@ int Server::handlePass(int fd, const std::vector<std::string>& vec) {
 		return 0;
 	}
 
+	if (vec.size() != 2) {
+		if (vec[2] != "NICK") {
+			sendToClient(fd, "461 * PASS :Not enough parameters\r\n");
+			std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
+			removeClient(fd);
+			close(fd);
+			return 0;
+		}
+	}
+
 	if (vec[1] == this->pass) {
+		getClientByFd(fd)->setisPass(true);
 		std::cout << "Password is correct for client [" << fd << "]" << std::endl;
 		return 1;
 	} else {
@@ -755,6 +793,14 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 		return;
 	}
 
+	if (vec.size() != 2) {
+		if (vec[2] != "USER") {
+			sendToClient(fd, "461 * NICK :Not enough parameters\r\n");
+			std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
+			return ;
+		}
+	}
+
 	if (!isNickValid(vec[1])) {
 		sendToClient(fd, "432 * " + vec[1] + " :Erroneous Nickname\r\n");
 		std::cout << "Error: Invalid nickname" << std::endl;
@@ -772,7 +818,9 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 	}
 	std::string oldNick = client->getnName();
 	client->setnName(vec[1]);
-	sendToClient(fd, oldNick + "changed thier nickname to " + vec[1] + "\r\n");
+	client->setisNick(true);
+	// client->setisCapNegotiated(true);
+	// sendToClient(fd, oldNick + "changed thier nickname to " + vec[1] + "\r\n");
 	sendToClient(fd, ":" + oldNick + "!" + getClientByFd(fd)->getuName() + "@" + getClientByFd(fd)->getipAdd() + " NICK " + vec[1] + "\n");
 	std::cout << "Nickname set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
 }
@@ -851,7 +899,6 @@ std::vector<std::string> Server::splitCmd(const std::string& str) {
 
 	return vec;
 }
-
 
 // Get the client object using the file descriptor.
 Client* Server::getClientByFd(int fd) {

@@ -11,6 +11,8 @@ Client::Client() {
 	this->uName = "";
 	this->ipAdd = "";
 	this->isCapNegotiated = false;
+	this->isPass = false;
+	this->isNick = false;
 }
 
 Client::~Client() {
@@ -26,6 +28,8 @@ Client& Client::operator=(const Client& toasgn){
 		ipAdd = toasgn.ipAdd;
 		clientChannelList = toasgn.clientChannelList;
 		isCapNegotiated = toasgn.isCapNegotiated;
+		isPass = toasgn.isPass;
+		isNick = toasgn.isNick;
 	}
 	return *this;
 }
@@ -58,6 +62,14 @@ bool Client::getisCapNegotiated() const {
 	return this->isCapNegotiated;
 }
 
+bool Client::getisPass() const {
+	return this->isPass;
+}
+
+bool Client::getisNick() const {
+	return this->isNick;
+}
+
 void Client::setfd(int fd) {
 	this->fd = fd;
 }
@@ -80,6 +92,14 @@ void Client::setipAdd(const std::string& str) {
 
 void Client::setisCapNegotiated(bool flag) {
 	this->isCapNegotiated = flag;
+}
+
+void Client::setisPass(bool flag) {
+	this->isPass = flag;
+}
+
+void Client::setisNick(bool flag) {
+	this->isNick = flag;
 }
 
 void Client::addChannel(const Channel& ch) {
