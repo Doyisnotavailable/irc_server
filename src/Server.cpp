@@ -992,6 +992,7 @@ std::string Server::addStrings(std::vector<std::string> lines, size_t i) {
 	std::string tmp;
 	for (size_t j = i; j < lines.size(); ++j){
 		tmp += lines[j];
+		tmp += " ";
 	}
 	tmp += "\r\n";
 	return tmp;
