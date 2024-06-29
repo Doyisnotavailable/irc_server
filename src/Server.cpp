@@ -94,6 +94,20 @@ void Server::startServer() {
     }
 }
 
+void Server::eraseClient(Client* cl) {
+	// Erase client from all channels
+	for (size_t i = 0; i < channels.size(); ++i){
+		if (channels[i].checkclientExist(cl)){
+			channels[i].removeClient(cl);
+		}
+	}
+
+	// Erase client from thier client list
+	for (size_t i = 0; i < cl->getChannelList().size(); ++i) {
+		cl->getChannelList()[i].removeClient(cl);
+	}
+}
+
 void Server::receive(int fd) {
 	char str[32767];
 	memset(str, 0, sizeof(str));
@@ -102,15 +116,20 @@ void Server::receive(int fd) {
 
 	if (size <= 0) {
 		std::cout << "Client " << this->getClient(fd)->getfd() << " disconnected" << std::endl;
-		removeClient(fd);
-		close(fd);
+
+		Client *cl = getClient(fd);
+		if (cl) {
+			eraseClient(cl);
+			removeClient(fd);
+			close(fd);
+		}
 	} else {
 		// str[size] = '\0';  ######################## THIS NEEDS REVIWING ########################## (commented to resolve a sigfault case when client send /disconnect cmd from irssi)
 		std::string line = str;
 
 		std::vector<std::string> vec = splitCmd(str);
 
-		std::cout << *vec.begin() << std::endl;
+		// std::cout << *vec.begin() << std::endl;
 
 		if (vec.empty())
 			return ;
@@ -137,7 +156,7 @@ void Server::receive(int fd) {
 			sendWelcome(fd, client); // Send welcome message to the client(Neccessary for the client to start the connection.)
 
 	}
-		displayChannel();
+		// displayChannel();
 }
 
 // Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.
@@ -626,7 +645,7 @@ int Server::setChannelLimit(Channel* chName, Client *cl, std::string str){
 	char *ptr;
 	long num = std::strtol(str.c_str(), &ptr, 10);
 
-	if (num <= 0 || num > std::numeric_limits<int>::max()) {
+	if (num <= 0 || num > INT_MAX) {
 		sendToClient(cl->getfd(), "Client limit amount exceeds INT_MAX\r\n");
 		return -1;
 	}
@@ -664,6 +683,7 @@ void Server::quitCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() > 1) {
 		std::cout << "Quit message: " << line[1] << std::endl;
 	}
+	eraseClient(cl);  // removes client from all its existing channels
 	removeClient(fd);
 	close(fd);
 }
