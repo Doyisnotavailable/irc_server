@@ -99,12 +99,8 @@ void Server::eraseClient(Client* cl) {
 	for (size_t i = 0; i < channels.size(); ++i){
 		if (channels[i].checkclientExist(cl)){
 			channels[i].removeClient(cl);
+			channels[i].removeclientOper(cl);
 		}
-	}
-
-	// Erase client from thier client list
-	for (size_t i = 0; i < cl->getChannelList().size(); ++i) {
-		cl->getChannelList()[i].removeClient(cl);
 	}
 }
 
@@ -430,6 +426,10 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 			} else if (tmpch->getclientFlag() == true && tmpch->getlimit() <= tmpch->getclientSize()) {
 				sendToClient(cl->getfd(), "471 " + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+l)\r\n");
 				std::cout << "Client limit in the channel already reached" << std::endl;
+			} else if (tmpch->getclientFlag() == true && tmpch->getlimit() > tmpch->getclientSize()){
+				tmpch->addClient(*cl);
+				sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
+				sendToClient(cl->getfd(), "332 " + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
 			}
 			} else
 				addChannel(chName, *cl); //creates channel if it doesnt exist
@@ -553,7 +553,7 @@ void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
 void Server::modeCMD(std::vector<std::string> line, Client* cl){
 	// line[0] = MODE line[1] = CHANNELname line[2] = modestring line[3]... = param
 
-	if (line.size() > 3){
+	if (line.size() >= 3){
 		Channel* ch = getChannel(line[1]);
 		if (ch == NULL){
 			sendToClient(cl->getfd(), "403 * " + line[1] + " :No such channel\r\n");
@@ -931,7 +931,7 @@ void Server::sendToChannel(Channel& ch, const std::string& msg){
 	
 	if (isChannel(ch.getchannelName())){
 		std::vector<class Client> tmp = ch.getclientList();
-		for (size_t i = 0; tmp.size(); ++i){
+		for (size_t i = 0; i < tmp.size(); ++i){
 			sendToClient(tmp[i].getfd(), msg);
 		}
 	} else

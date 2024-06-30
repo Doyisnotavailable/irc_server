@@ -108,6 +108,14 @@ bool Channel::checkclientOper(Client* cl) {
 	return false;
 }
 
+void Channel::removeclientOper(Client* cl) {
+	for (size_t i = 0; i < operlist.size(); ++i){
+		if (cl->getfd() == operlist[i].getfd()){
+			operlist.erase(operlist.begin() + i);
+		}
+	}
+}
+
 void Channel::removeClient(Client* cl){
 	for (size_t i = 0; i < clientlist.size(); ++i){
 		if (cl->getfd() == clientlist[i].getfd()){
