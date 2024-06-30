@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <sstream>
 #include <ctype.h>
+#include <climits>
 #include "Util.hpp"
 
 
@@ -94,6 +95,7 @@ class Server {
 
         // Channel commands
         void topicCMD(std::vector<std::string>& vec, Client* cl);
+        void eraseClient(Client* cl);
 
         // int handleNC(int fd, std::string& str);
         // int registerNC(int fd, std::string& str);

@@ -44,8 +44,12 @@ Channel::Channel(const std::string& chName, Client& cl): channelName(chName){
 }
 
 void Channel::addClient(Client& client) {
-	client.addChannel(*this);
-	this->clientlist.push_back(client);
+	Client *cl = &client;
+	Channel ch = *this;
+	// client.addChannel(*this);
+	// this->clientlist.push_back(client);
+	cl->addChannel(ch);
+	this->clientlist.push_back(*cl);
 }
 
 std::string Channel::getchannelName() const {

@@ -94,6 +94,20 @@ void Server::startServer() {
     }
 }
 
+void Server::eraseClient(Client* cl) {
+	// Erase client from all channels
+	for (size_t i = 0; i < channels.size(); ++i){
+		if (channels[i].checkclientExist(cl)){
+			channels[i].removeClient(cl);
+		}
+	}
+
+	// Erase client from thier client list
+	for (size_t i = 0; i < cl->getChannelList().size(); ++i) {
+		cl->getChannelList()[i].removeClient(cl);
+	}
+}
+
 void Server::receive(int fd) {
 	char str[32767];
 	memset(str, 0, sizeof(str));
@@ -102,15 +116,20 @@ void Server::receive(int fd) {
 
 	if (size <= 0) {
 		std::cout << "Client " << this->getClient(fd)->getfd() << " disconnected" << std::endl;
-		removeClient(fd);
-		close(fd);
+
+		Client *cl = getClient(fd);
+		if (cl) {
+			eraseClient(cl);
+			removeClient(fd);
+			close(fd);
+		}
 	} else {
 		// str[size] = '\0';  ######################## THIS NEEDS REVIWING ########################## (commented to resolve a sigfault case when client send /disconnect cmd from irssi)
 		std::string line = str;
 
 		std::vector<std::string> vec = splitCmd(str);
 
-		std::cout << *vec.begin() << std::endl;
+		// std::cout << *vec.begin() << std::endl;
 
 		if (vec.empty())
 			return ;
@@ -123,21 +142,19 @@ void Server::receive(int fd) {
 			if (!handleCommand(fd, vec)) // handle the commands(PASS, NICK, USER, CAP, PING, QUIT).
 				return ;
 			}
-		else if (client->getisCapNegotiated() == true || client->getisNick() == true)
+		else if (client->getisCapNegotiated() == true && client->getisPass() == true && client->getisNick() == true)
 			checkReceived(line, getClient(fd));
 		else {
 			sendToClient(fd, "451 * :You have not registered\r\n");
 			std::cerr << "Client not registered" << std::endl;
 		}
-
 		
 		if (client->getisCapNegotiated() == true || client->getnName().empty() || client->getuName().empty())
 			return;
 		else
 			sendWelcome(fd, client); // Send welcome message to the client(Neccessary for the client to start the connection.)
-
 	}
-		displayChannel();
+		// displayChannel();
 }
 
 // Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.
@@ -626,7 +643,7 @@ int Server::setChannelLimit(Channel* chName, Client *cl, std::string str){
 	char *ptr;
 	long num = std::strtol(str.c_str(), &ptr, 10);
 
-	if (num <= 0 || num > std::numeric_limits<int>::max()) {
+	if (num <= 0 || num > INT_MAX) {
 		sendToClient(cl->getfd(), "Client limit amount exceeds INT_MAX\r\n");
 		return -1;
 	}
@@ -660,10 +677,16 @@ void Server::pingCMD(std::vector<std::string> line, Client* cl){
 void Server::quitCMD(std::vector<std::string> line, Client* cl){
 	// (void)line;
 	int fd = cl->getfd();
+	if (cl->getisPass() == false || cl->getisNick() == false) {
+		sendToClient(fd, "451 * :You have not registered\r\n");
+		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
+		return ;
+	}
 	std::cout << "Client " << cl->getnName() << " has quit" << std::endl;
 	if (line.size() > 1) {
 		std::cout << "Quit message: " << line[1] << std::endl;
 	}
+	eraseClient(cl);  // removes client from all its existing channels
 	removeClient(fd);
 	close(fd);
 }
@@ -711,11 +734,11 @@ int Server::handleCommand(int fd, std::vector<std::string>& vec) {
 			if (!handlePass(fd, vec))
 				return 0;
 		}
-		if (getClientByFd(fd)->getisPass() == false) {
-			sendToClient(fd, "451 * :You have not registered\r\n");
-			std::cerr << "Client [" << fd << "] has not registered" << std::endl;
-			return 0;
-		}
+		// if (getClientByFd(fd)->getisPass() == false) {
+		// 	sendToClient(fd, "451 * :You have not registered\r\n");
+		// 	std::cerr << "Client [" << fd << "] has not registered" << std::endl;
+		// 	return 0;
+		// }
 		else if (vec[0] == "NICK" || vec[0] == "nick") 
 			handleNick(fd, vec);
 		else if (vec[0] == "USER" || vec[0] == "user") 
@@ -818,6 +841,12 @@ bool Server::isNickValid(const std::string& nick) {
 // Send an error message if the nickname is already in use. irssi out automatically set the nickname to a different but similar one.
 void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 
+	if (getClientByFd(fd)->getisPass() == false) {
+		sendToClient(fd, "451 * :You have not registered\r\n");
+		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
+		return ;
+	}
+
 	if (vec.size() < 2) {
 		sendToClient(fd, "431 * :No nickname given\r\n");
 		std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
@@ -860,6 +889,12 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 // Handle the USER command from the client. Set the username for the client.
 void Server::handleUser(int fd, const std::vector<std::string>& vec) {
 
+	if (getClientByFd(fd)->getisPass() == false || getClientByFd(fd)->getisNick() == false) {
+		sendToClient(fd, "451 * :You have not registered\r\n");
+		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
+		return ;
+	}
+	
 	if (vec.size() < 5) {
 		sendToClient(fd, "461 * USER :Not enough parameters\r\n");
 		std::cerr << "Invalid USER command format from client [" << fd << "]" << std::endl;
@@ -957,6 +992,7 @@ std::string Server::addStrings(std::vector<std::string> lines, size_t i) {
 	std::string tmp;
 	for (size_t j = i; j < lines.size(); ++j){
 		tmp += lines[j];
+		tmp += " ";
 	}
 	tmp += "\r\n";
 	return tmp;

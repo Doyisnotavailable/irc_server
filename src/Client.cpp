@@ -116,3 +116,7 @@ void Client::removeChannel(const Channel& ch){
 bool Client::operator==(const Client& tocheck) {
 	return this->getfd() == tocheck.getfd();
 }
+
+std::vector<class Channel> Client::getChannelList() const {
+	return this->clientChannelList;
+}
