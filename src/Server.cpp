@@ -138,7 +138,7 @@ void Server::receive(int fd) {
 			if (!handleCommand(fd, vec)) // handle the commands(PASS, NICK, USER, CAP, PING, QUIT).
 				return ;
 			}
-		else if (client->getisCapNegotiated() == true && client->getisPass() == true && client->getisNick() == true)
+		else if (client->getisCapNegotiated() == true && client->getisRegistered() == true)
 			checkReceived(line, getClient(fd));
 		else {
 			sendToClient(fd, "451 * :You have not registered\r\n");
@@ -156,7 +156,7 @@ void Server::receive(int fd) {
 // Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.
 void Server::sendWelcome(int fd, Client* client) {
 
-	sendToClient(fd, ":" + client->getuName() + " 001 " + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "\r\n"); // 001 RPL_WELCOME
+	sendToClient(fd, ":" + client->getuName() + " 001 " + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + client->getipAdd() + "\r\n"); // 001 RPL_WELCOME
     sendToClient(fd, ":" + client->getuName() + " 002 " + client->getnName() + " :Your host is IRC_M2, running version APEX.1.0\r\n"); // 002 RPL_YOURHOST
     sendToClient(fd, ":" + client->getuName() + " 003 " + client->getnName() + " :This server was created by Martin and Miguel\r\n"); // 003 RPL_CREATED
     sendToClient(fd, ":" + client->getuName() + " 004 " + client->getnName() + " IRC_M2 APEX.1.0 io ovimnqpsrtklbf :This server supports multiple modes\r\n"); // 004 RPL_MYINFO
@@ -266,7 +266,7 @@ void Server::addClient() {
 
 	client.setfd(clientfd); //-> set the client file descriptor
 	client.setipAdd(inet_ntoa((cliadd.sin_addr))); //-> convert the ip address to string and set it
-	client.setuName("irc"); //-> set the user name
+	// client.setuName("irc"); //-> set the user name
 	clients.push_back(client); //-> add the client to the vector of clients
 	pollfds.push_back(NewPoll); //-> add the client socket to the pollfd
 	// displayClient();
@@ -300,7 +300,7 @@ void Server::addChannel(const std::string& chName, Client& cl) {
 	// sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + cl.getipAdd() + " JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), "332 " + cl.getnName() + " " + chName + " :" + ch.getTopic() + "\r\n");
-	sendToClient(cl.getfd(), "353 " + cl.getnName() + " = " + chName + " :" + cl.getnName() + "\r\n");
+	sendToClient(cl.getfd(), "353 " + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
 	sendToClient(cl.getfd(), "366 " + cl.getnName() + " " + chName + " :End of /NAMES list\r\n");
 	std::cout << "Client " << cl.getuName() << " created a channel " << chName << std::endl; 
 }
@@ -405,9 +405,9 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 					if (i > 0) {
 						clientListStr += " ";
 					}
-					clientListStr += tmplist[i].getnName();
+					clientListStr += "@" + tmplist[i].getnName();
 				}
-				
+
 				sendToClient(cl->getfd(), "353 " + cl->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
 				sendToClient(cl->getfd(), "366 " + cl->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
 				std::cout << "client joined" << std::endl;
@@ -553,6 +553,13 @@ void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
 void Server::modeCMD(std::vector<std::string> line, Client* cl){
 	// line[0] = MODE line[1] = CHANNELname line[2] = modestring line[3]... = param
 
+	// We are only requered to implement channel modes.
+	// if Mode is called for non channel (on client), return.
+	if (line[1][0] != '#') {
+		std::cout << std::endl << "MODE CALLED FOR USER NOT CHANNEL" << std::endl;
+		return ;
+	}
+
 	if (line.size() >= 3){
 		Channel* ch = getChannel(line[1]);
 		if (ch == NULL){
@@ -677,7 +684,7 @@ void Server::pingCMD(std::vector<std::string> line, Client* cl){
 void Server::quitCMD(std::vector<std::string> line, Client* cl){
 	// (void)line;
 	int fd = cl->getfd();
-	if (cl->getisPass() == false || cl->getisNick() == false) {
+	if (cl->getisRegistered() == false) {
 		sendToClient(fd, "451 * :You have not registered\r\n");
 		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
 		return ;
@@ -905,6 +912,7 @@ void Server::handleUser(int fd, const std::vector<std::string>& vec) {
 		Client *client = getClientByFd(fd);
 		
 		client->setuName(vec[1]);
+		client->setisRegistered(true);
 		std::cout << "Username set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
 	}
 	else {

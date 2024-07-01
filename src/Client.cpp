@@ -13,6 +13,7 @@ Client::Client() {
 	this->isCapNegotiated = false;
 	this->isPass = false;
 	this->isNick = false;
+	this->isRegistered = false;
 }
 
 Client::~Client() {
@@ -30,6 +31,7 @@ Client& Client::operator=(const Client& toasgn){
 		isCapNegotiated = toasgn.isCapNegotiated;
 		isPass = toasgn.isPass;
 		isNick = toasgn.isNick;
+		isRegistered = toasgn.isRegistered;
 	}
 	return *this;
 }
@@ -70,6 +72,10 @@ bool Client::getisNick() const {
 	return this->isNick;
 }
 
+bool Client::getisRegistered() const {
+	return this->isRegistered;
+}
+
 void Client::setfd(int fd) {
 	this->fd = fd;
 }
@@ -100,6 +106,10 @@ void Client::setisPass(bool flag) {
 
 void Client::setisNick(bool flag) {
 	this->isNick = flag;
+}
+
+void Client::setisRegistered(bool flag) {
+	this->isRegistered = flag;
 }
 
 void Client::addChannel(const Channel& ch) {
