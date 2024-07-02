@@ -141,7 +141,7 @@ void Server::receive(int fd) {
 		else if (client->getisCapNegotiated() == true && client->getisRegistered() == true)
 			checkReceived(line, getClient(fd));
 		else {
-			sendToClient(fd, "451 * :You have not registered\r\n");
+			sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
 			std::cerr << "Client not registered" << std::endl;
 		}
 		
@@ -156,22 +156,22 @@ void Server::receive(int fd) {
 // Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.
 void Server::sendWelcome(int fd, Client* client) {
 
-	sendToClient(fd, ":" + client->getuName() + " 001 " + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + client->getipAdd() + "\r\n"); // 001 RPL_WELCOME
-    sendToClient(fd, ":" + client->getuName() + " 002 " + client->getnName() + " :Your host is IRC_M2, running version APEX.1.0\r\n"); // 002 RPL_YOURHOST
-    sendToClient(fd, ":" + client->getuName() + " 003 " + client->getnName() + " :This server was created by Martin and Miguel\r\n"); // 003 RPL_CREATED
-    sendToClient(fd, ":" + client->getuName() + " 004 " + client->getnName() + " IRC_M2 APEX.1.0 io ovimnqpsrtklbf :This server supports multiple modes\r\n"); // 004 RPL_MYINFO
-    sendToClient(fd, ":" + client->getuName() + " 005 " + client->getnName() + " CHANTYPES=#& PREFIX=(ov)@+ NETWORK=IRC_M2 :are supported by this server\r\n"); // 005 RPL_ISUPPORT
+	sendToClient(fd, ":" + client->getuName() + RPL_WELCOME + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + client->getipAdd() + "\r\n"); // 001 RPL_WELCOME
+    sendToClient(fd, ":" + client->getuName() + RPL_YOURHOST + client->getnName() + " :Your host is IRC_M2, running version APEX.1.0\r\n"); // 002 RPL_YOURHOST
+    sendToClient(fd, ":" + client->getuName() + RPL_CREATED + client->getnName() + " :This server was created by Martin and Miguel\r\n"); // 003 RPL_CREATED
+    sendToClient(fd, ":" + client->getuName() + RPL_MYINFO + client->getnName() + " IRC_M2 APEX.1.0 io ovimnqpsrtklbf :This server supports multiple modes\r\n"); // 004 RPL_MYINFO
+    sendToClient(fd, ":" + client->getuName() + RPL_ISUPPORT + client->getnName() + " CHANTYPES=#& PREFIX=(ov)@+ NETWORK=IRC_M2 :are supported by this server\r\n"); // 005 RPL_ISUPPORT
 
-    sendToClient(fd, ":" + client->getuName() + " 251 " + client->getnName() + " :There are 10 users and 3 services on 1 server\r\n"); // 251 RPL_LUSERCLIENT
-    sendToClient(fd, ":" + client->getuName() + " 252 " + client->getnName() + " 2 :operator(s) online\r\n"); // 252 RPL_LUSEROP
-    sendToClient(fd, ":" + client->getuName() + " 253 " + client->getnName() + " 1 :unknown connection(s)\r\n"); // 253 RPL_LUSERUNKNOWN
-    sendToClient(fd, ":" + client->getuName() + " 254 " + client->getnName() + " 5 :channels formed\r\n"); // 254 RPL_LUSERCHANNELS
-    sendToClient(fd, ":" + client->getuName() + " 255 " + client->getnName() + " :I have 10 clients and 1 servers\r\n"); // 255 RPL_LUSERME
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERCLIENT + client->getnName() + " :There are 10 users and 3 services on 1 server\r\n"); // 251 RPL_LUSERCLIENT
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSEROP + client->getnName() + " 2 :operator(s) online\r\n"); // 252 RPL_LUSEROP
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERUNKNOWN + client->getnName() + " 1 :unknown connection(s)\r\n"); // 253 RPL_LUSERUNKNOWN
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERCHANNELS + client->getnName() + " 5 :channels formed\r\n"); // 254 RPL_LUSERCHANNELS
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERME + client->getnName() + " :I have 10 clients and 1 servers\r\n"); // 255 RPL_LUSERME
 
-    sendToClient(fd, ":" + client->getuName() + " 375 " + client->getnName() + " :- " + client->getuName() + " Message of the Day -\r\n"); // 375 RPL_MOTDSTART
-    sendToClient(fd, ":" + client->getuName() + " 372 " + client->getnName() + " :- Welcome to the best IRC server!\r\n"); // 372 RPL_MOTD
-    sendToClient(fd, ":" + client->getuName() + " 372 " + client->getnName() + " :- Enjoy your stay!\r\n"); // 372 RPL_MOTD
-    sendToClient(fd, ":" + client->getuName() + " 376 " + client->getnName() + " :End of /MOTD command.\r\n"); // 376 RPL_ENDOFMOTD
+    sendToClient(fd, ":" + client->getuName() + RPL_MOTDSTART + client->getnName() + " :- " + client->getuName() + " Message of the Day -\r\n"); // 375 RPL_MOTDSTART
+    sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Welcome to the best IRC server!\r\n"); // 372 RPL_MOTD
+    sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Enjoy your stay!\r\n"); // 372 RPL_MOTD
+    sendToClient(fd, ":" + client->getuName() + RPL_ENDOFMOTD + client->getnName() + " :End of /MOTD command.\r\n"); // 376 RPL_ENDOFMOTD
 
 	client->setisCapNegotiated(true);
 }
@@ -182,30 +182,30 @@ void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
 		Channel *channel = getChannel(vec[1]);
 
 		if (!channel) {
-			sendToClient(cl->getfd(), "403 * " + vec[1] + " :No such channel\r\n");
+			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + vec[1] + ":No such channel\r\n");
 			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
 			return ;
 		} else {
-			sendToClient(cl->getfd(), "332 * " + channel->getchannelName() + " :" + channel->getTopic() + "\r\n");
+			sendToClient(cl->getfd(), RPL_TOPIC + channel->getchannelName() + ":" + channel->getTopic() + "\r\n");
 			return ;
 		}
 	}
 
 	if (vec.size() < 3) {
-		sendToClient(cl->getfd(), "461 * TOPIC :Not enough parameters\r\n");
+		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS "* TOPIC :Not enough parameters\r\n");
 		std::cerr << "Invalid TOPIC command format from client [" << cl->getfd() << "]" << std::endl;
 		return ;
 	}
 
 	Channel *channel = getChannel(vec[1]);
 	if (!channel) {
-		sendToClient(cl->getfd(), "403 * " + vec[1] + " :No such channel\r\n");
+		sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + vec[1] + ":No such channel\r\n");
 		std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
 		return ;
 	}
 
 	if (!channel->checkclientExist(cl)) {
-		sendToClient(cl->getfd(), "442 * " + vec[1] + " :You're not on that channel\r\n");
+		sendToClient(cl->getfd(), ERR_NOTONCHANNEL + vec[1] + " :You're not on that channel\r\n");
 		std::cerr << "Client is not in the channel for client [" << cl->getfd() << "]" << std::endl;
 		return ;
 	}
@@ -227,7 +227,7 @@ void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
 void Server::checkReceived(std::string str, Client* cl) {
 
 	if (cl->getisNick() == false) {
-		sendToClient(cl->getfd(), "451 * :You have not registered\r\n");
+		sendToClient(cl->getfd(), ERR_NOTREGISTERED " :You have not registered\r\n");
 		return ;
 	}
 	std::vector<std::string> line = ::split(str, ' ');
@@ -243,8 +243,10 @@ void Server::checkReceived(std::string str, Client* cl) {
 		modeCMD(line, cl);
 	else if (line[0] == "PRIVMSG")
 		privCMD(line, cl);
-	else
+	else {
+		sendToClient(cl->getfd(), ERR_UNKNOWNCOMMAND + line[0] + " :Unknown command\r\n");
 		std::cout << "wtf are you typing " << cl->getnName() << std::endl;
+	}
 }
 
 void Server::addClient() {
@@ -299,9 +301,9 @@ void Server::addChannel(const std::string& chName, Client& cl) {
 	cl.addChannel(ch);
 	// sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + cl.getipAdd() + " JOIN :" + ch.getchannelName() + "\r\n");
-	sendToClient(cl.getfd(), "332 " + cl.getnName() + " " + chName + " :" + ch.getTopic() + "\r\n");
-	sendToClient(cl.getfd(), "353 " + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
-	sendToClient(cl.getfd(), "366 " + cl.getnName() + " " + chName + " :End of /NAMES list\r\n");
+	sendToClient(cl.getfd(), RPL_TOPIC + cl.getnName() + " " + chName + " :" + ch.getTopic() + "\r\n");
+	sendToClient(cl.getfd(), RPL_NAMREPLY + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
+	sendToClient(cl.getfd(), RPL_ENDOFNAMES + cl.getnName() + " " + chName + " :End of /NAMES list\r\n");
 	std::cout << "Client " << cl.getuName() << " created a channel " << chName << std::endl; 
 }
 
@@ -396,7 +398,7 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 			if (!tmpch->joinFlags()) {
 				tmpch->addClient(*cl);
 				sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-				sendToClient(cl->getfd(), "332 " + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
+				sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
 				
 				std::vector<class Client> tmplist = tmpch->getclientList();
 				
@@ -408,33 +410,33 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 					clientListStr += "@" + tmplist[i].getnName();
 				}
 
-				sendToClient(cl->getfd(), "353 " + cl->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
-				sendToClient(cl->getfd(), "366 " + cl->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
+				sendToClient(cl->getfd(), RPL_NAMREPLY + cl->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
+				sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
 				std::cout << "client joined" << std::endl;
 			}
 
 			else if (tmpch->getinvFlag() == true) {
-				sendToClient(cl->getfd(), "473 " + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+i)\r\n");
+				sendToClient(cl->getfd(), ERR_INVITEONLYCHAN + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+i)\r\n");
 				std::cout << "Invite only channel client cant join" << std::endl;
 			}
 			else if (tmpch->getkeyFlag() == true && key == NULL) {
-				sendToClient(cl->getfd(), "475 " + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+k)\r\n");
+				sendToClient(cl->getfd(), ERR_BADCHANNELKEY + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+k)\r\n");
 				std::cout << "Channel requires key to join" << std::endl;
 			}
 			else if (tmpch->getkeyFlag() == true && key != NULL) {
 				joinPass(tmpch, key, cl);
 			} else if (tmpch->getclientFlag() == true && tmpch->getlimit() <= tmpch->getclientSize()) {
-				sendToClient(cl->getfd(), "471 " + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+l)\r\n");
+				sendToClient(cl->getfd(), ERR_CHANNELISFULL + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+l)\r\n");
 				std::cout << "Client limit in the channel already reached" << std::endl;
 			} else if (tmpch->getclientFlag() == true && tmpch->getlimit() > tmpch->getclientSize()){
 				tmpch->addClient(*cl);
 				sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-				sendToClient(cl->getfd(), "332 " + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
+				sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
 			}
 			} else
 				addChannel(chName, *cl); //creates channel if it doesnt exist
 	} else {
-		sendToClient(cl->getfd(), "403 " + cl->getnName() + " " + chName + " :No such channel\r\n");
+		sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + chName + " :No such channel\r\n");
 		std::cout << "Invalid channel name" << std::endl;
 	}
 }
@@ -442,13 +444,13 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 void Server::joinPass(Channel* chName, const char* key, Client* cl){
 	std::string tmpkey(key);
 	if (chName->getclientFlag() == true && chName->getlimit() <= chName->getclientSize()) {
-		sendToClient(cl->getfd(), "471 " + cl->getnName() + " " + chName->getchannelName() + " :Cannot join channel (+l)\r\n");
+		sendToClient(cl->getfd(), ERR_CHANNELISFULL + cl->getnName() + " " + chName->getchannelName() + " :Cannot join channel (+l)\r\n");
 		std::cout << "Client limit in the channel already reached" << std::endl;
 		return ;
 	}
 	if (tmpkey == chName->getKey()) {
 		sendToClient(cl->getfd(), "JOIN :" + chName->getchannelName() + "\r\n");
-		sendToClient(cl->getfd(), "332 " + cl->getnName() + " " + chName->getchannelName() + " :" + chName->getTopic() + "\r\n");
+		sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + chName->getchannelName() + " :" + chName->getTopic() + "\r\n");
 
 		std::vector<class Client> tmplist = chName->getclientList();
 		std::string clientListStr;
@@ -458,11 +460,11 @@ void Server::joinPass(Channel* chName, const char* key, Client* cl){
 			}
 			clientListStr += tmplist[i].getnName();
 		}
-		sendToClient(cl->getfd(), "353 " + cl->getnName() + " = " + chName->getchannelName() + " :" + clientListStr + "\r\n");
-		sendToClient(cl->getfd(), "366 " + cl->getnName() + " " + chName->getchannelName() + " :End of /NAMES list\r\n");
+		sendToClient(cl->getfd(), RPL_NAMREPLY + cl->getnName() + " = " + chName->getchannelName() + " :" + clientListStr + "\r\n");
+		sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + chName->getchannelName() + " :End of /NAMES list\r\n");
 		chName->addClient(*cl);
 	} else {
-		sendToClient(cl->getfd(), "475 " + cl->getnName() + " " + chName->getchannelName() + " :Cannot join channel (+k)\r\n");
+		sendToClient(cl->getfd(), ERR_BADCHANNELKEY + cl->getnName() + " " + chName->getchannelName() + " :Cannot join channel (+k)\r\n");
 		std::cout << "Wrong channel key" << std::endl;
 	}
 }
@@ -474,7 +476,7 @@ void Server::kickCMD(std::vector<std::string> line, Client* cl){
 		return ;
 	}
 	if(!isChannel(line[1])){
-		sendToClient(cl->getfd(), "403 " + cl->getnName() + " " + line[1] + " :No such channel\r\n");
+		sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + line[1] + " :No such channel\r\n");
 		std::cout << "Channel doesnt exist" << std::endl;
 		return ;
 	}
@@ -482,7 +484,7 @@ void Server::kickCMD(std::vector<std::string> line, Client* cl){
 	Client* removeCl = getClient(line[2]);
 	//have to check if cl is a channel operator or operator
 	if (!removeCl){
-		sendToClient(cl->getfd(), "401 " + cl->getnName() + " " + line[2] + " :No such nick/channel\r\n");
+		sendToClient(cl->getfd(), ERR_NOSUCHNICK + cl->getnName() + " " + line[2] + " :No such nick/channel\r\n");
 		std::cout << "Client not found" << std::endl;
 		return ;
 	}
@@ -493,7 +495,7 @@ void Server::kickCMD(std::vector<std::string> line, Client* cl){
 			std::cout << "KICK message on channel " << tmpch->getchannelName() << " from " << cl->getuName() << " to remove " << removeCl->getuName() << " from channel" << std::endl;
 		}
 	} else {
-		sendToClient(cl->getfd(), "482 " + cl->getnName() + " " + tmpch->getchannelName() + " :You're not channel operator\r\n");
+		sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + tmpch->getchannelName() + " :You're not channel operator\r\n");
 		std::cout << "Client not in channel or not operator" << std::endl;
 	}
 }
@@ -518,7 +520,7 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 				if (tmpch->checkclientExist(cl))
 					privCMDsendtoChannel(tmpch, cl, tosend);
 				else {
-					sendToClient(cl->getfd(), "442 * " + tmpch->getchannelName() + " :Cannot send to channel\r\n");
+					sendToClient(cl->getfd(), ERR_NOTONCHANNEL + tmpch->getchannelName() + " :Cannot send to channel\r\n");
 					// sendToClient(cl->getfd(), cl->getnName() + " " + tmpch->getchannelName() + " :Cannot send to channel\r\n");
 				}
 				continue ;
@@ -529,7 +531,7 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 			sendToClient(receiver->getfd(), cl->getnName() + " PRIVMSG " + receiver->getnName() + " " + tosend);
 		}
 	} else {
-		sendToClient(cl->getfd(), "461 * PRIVMSG :Not enough parameters\r\n");
+		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS " * PRIVMSG :Not enough parameters\r\n");
 		std::cout << "Invalid use of priv" << std::endl;
 	}
 }
@@ -563,12 +565,12 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() >= 3){
 		Channel* ch = getChannel(line[1]);
 		if (ch == NULL){
-			sendToClient(cl->getfd(), "403 * " + line[1] + " :No such channel\r\n");
+			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + line[1] + " :No such channel\r\n");
 			// sendToClient(cl->getfd(), cl->getuName() + " " + line[1] + " :No such channel\r\n");
 			return ;
 		}
 		if (!ch->checkclientOper(cl)){
-			sendToClient(cl->getfd(), "482 * " + ch->getchannelName() + " :You're not channel operator\r\n");
+			sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + ch->getchannelName() + " :You're not channel operator\r\n");
 			// sendToClient(cl->getfd(), cl->getuName() + " " + ch->getchannelName() + " :You're not channel operator");
 			return ;
 		}
@@ -580,7 +582,7 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 			return ;
 		}
 		if (modestring[0] != '+' && modestring[0] != '-'){
-			sendToClient(cl->getfd(), "472 * " + ch->getchannelName() + " :Unknown MODE flag\r\n");
+			sendToClient(cl->getfd(), ERR_UNKNOWNMODE + ch->getchannelName() + " :Unknown MODE flag\r\n");
 			return ;
 		}
 		for (size_t i = 0; modestring[i]; ++i){
@@ -641,7 +643,7 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 		}
 	}
 	else {
-		sendToClient(cl->getfd(), "461 * MODE :Not enough parameters\r\n");
+		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS " * MODE :Not enough parameters\r\n");
 		// sendToClient(cl->getfd(), "Invalid use of MODE\r\n");
 	}
 }
@@ -665,7 +667,7 @@ void Server::setChannelKey(Channel* ch, Client* cl, std::string str){
 	//check str for alphanumerical and empty.
 	// ERR_INVALIDKEY (525) 
 	if(!checkpass(str)) {
-		sendToClient(cl->getfd(), "525 * :key is not well-formed\r\n");
+		sendToClient(cl->getfd(), ERR_INVALIDKEY " :key is not well-formed\r\n");
 		return ;
 	}
 	ch->setKey(str);
@@ -675,17 +677,29 @@ void Server::setChannelKey(Channel* ch, Client* cl, std::string str){
 
 void Server::pingCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() < 2){
-		sendToClient(cl->getfd(), "461 * PING :Not enough parameters\r\n");
+		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS " * PING :Not enough parameters\r\n");
+		return ;
+	} else if (line.size() > 2){
+		sendToClient(cl->getfd(), ERR_NOORIGIN  "PING :No origin specified\r\n");
+		return ;
+	} else if (line[1].empty()){
+		sendToClient(cl->getfd(), ERR_NOORIGIN "PING :No origin specified\r\n");
 		return ;
 	}
-	sendToClient(cl->getfd(), "PONG " + line[1] + "\"\r\n");
+	if (cl->getisRegistered() == false) {
+		sendToClient(cl->getfd(), ERR_NOTREGISTERED ":You have not registered\r\n");
+		std::cerr << "Client [" << cl->getfd() << "] has not registered" << std::endl;
+		return ;
+	}
+
+	sendToClient(cl->getfd(), "PONG " + line[1] + "\r\n");
 }
 
 void Server::quitCMD(std::vector<std::string> line, Client* cl){
 	// (void)line;
 	int fd = cl->getfd();
 	if (cl->getisRegistered() == false) {
-		sendToClient(fd, "451 * :You have not registered\r\n");
+		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
 		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
 		return ;
 	}
@@ -731,23 +745,21 @@ void Server::sendCapabilities(int fd) {
 
 
 int Server::handleCommand(int fd, std::vector<std::string>& vec) {
+	bool isCap = false;
 	Client *client = getClientByFd(fd);
 
 	if (vec.empty()) {
 		return 0;
 	}
+	
+	if (vec[0] ==  "CAP" && vec[1] == "END")
+		isCap = true;
+	
 	for (size_t i = 0; i < vec.size(); i++) {
-		if (vec[0] == "PASS" || vec[0] == "pass") {
-			if (!handlePass(fd, vec))
-				return 0;
-		}
-		// if (getClientByFd(fd)->getisPass() == false) {
-		// 	sendToClient(fd, "451 * :You have not registered\r\n");
-		// 	std::cerr << "Client [" << fd << "] has not registered" << std::endl;
-		// 	return 0;
-		// }
+		if (vec[0] == "PASS" || vec[0] == "pass")
+			handlePass(fd, vec, isCap);
 		else if (vec[0] == "NICK" || vec[0] == "nick") 
-			handleNick(fd, vec);
+			handleNick(fd, vec, isCap);
 		else if (vec[0] == "USER" || vec[0] == "user") 
 			handleUser(fd, vec);
 		else if (vec[0] == "PING") 
@@ -788,40 +800,36 @@ void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
 }
 
 // Handle the PASS command from the client. Remove the client if the password is incorrect.
-int Server::handlePass(int fd, const std::vector<std::string>& vec) {
+void Server::handlePass(int fd, const std::vector<std::string>& vec, bool isCap) {
 
 	if (getClientByFd(fd)->getisPass() == true) {
-		return 1;
+		sendToClient(fd, ERR_ALREADYREGISTRED " * :You may not reregister\r\n");
+		std::cerr << "Client [" << fd << "] may not reregister" << std::endl;
+		return ;
 	}
 
 	if (vec.size() < 2 || vec[1].empty()) {
-		sendToClient(fd, "461 * PASS :Not enough parameters\r\n");
+		sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
 		std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
-		removeClient(fd);
-		close(fd);
-		return 0;
+		return ;
 	}
 
 	if (vec.size() != 2) {
-		if (vec[2] != "NICK") {
-			sendToClient(fd, "461 * PASS :Not enough parameters\r\n");
+		if (isCap == false) {
+			sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
 			std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
-			removeClient(fd);
-			close(fd);
-			return 0;
+			return ;
 		}
 	}
 
 	if (vec[1] == this->pass) {
 		getClientByFd(fd)->setisPass(true);
 		std::cout << "Password is correct for client [" << fd << "]" << std::endl;
-		return 1;
+		return ;
 	} else {
-		sendToClient(fd, "464 * :Password incorrect\r\n");
+		sendToClient(fd, ERR_PASSWDMISMATCH " * :Password incorrect\r\n");
 		std::cerr << "Password is incorrect for client [" << fd << "]" << std::endl;
-		removeClient(fd);
-		close(fd);
-		return 0;
+		return ;
 	}
 }
 
@@ -846,30 +854,30 @@ bool Server::isNickValid(const std::string& nick) {
 
 // Handle the NICK command from the client. Set the nickname for the client.
 // Send an error message if the nickname is already in use. irssi out automatically set the nickname to a different but similar one.
-void Server::handleNick(int fd, const std::vector<std::string>& vec) {
+void Server::handleNick(int fd, const std::vector<std::string>& vec, bool isCap) {
 
 	if (getClientByFd(fd)->getisPass() == false) {
-		sendToClient(fd, "451 * :You have not registered\r\n");
+		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
 		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
 		return ;
 	}
 
 	if (vec.size() < 2) {
-		sendToClient(fd, "431 * :No nickname given\r\n");
+		sendToClient(fd, ERR_NONICKNAMEGIVEN " * :No nickname given\r\n");
 		std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
 		return;
 	}
 
 	if (vec.size() != 2) {
-		if (vec[2] != "USER") {
-			sendToClient(fd, "461 * NICK :Not enough parameters\r\n");
+		if (isCap == false) {
+			sendToClient(fd, ERR_NEEDMOREPARAMS " * NICK :Not enough parameters\r\n");
 			std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
 			return ;
 		}
 	}
 
 	if (!isNickValid(vec[1])) {
-		sendToClient(fd, "432 * " + vec[1] + " :Erroneous Nickname\r\n");
+		sendToClient(fd, ERR_ERRONEUSNICKNAME + vec[1] + " :Erroneous Nickname\r\n");
 		std::cout << "Error: Invalid nickname" << std::endl;
 		return ;
 	}
@@ -878,7 +886,8 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 
 	for (size_t i = 0; i < clients.size(); i++) {
 		if (clients[i].getnName() == vec[1]) {
-			sendToClient(fd, "433 * " + vec[1] + " :Nickname is already in use\r\n");
+			getClientByFd(fd)->setisNick(true);
+			sendToClient(fd, ERR_NICKNAMEINUSE + vec[1] + " :Nickname is already in use\r\n");
 			std::cout << "Error: Nickname already exists" << std::endl;
 			return ;
 		}
@@ -888,7 +897,7 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 	client->setisNick(true);
 	// client->setisCapNegotiated(true);
 	// sendToClient(fd, oldNick + "changed thier nickname to " + vec[1] + "\r\n");
-	sendToClient(fd, ":" + oldNick + "!" + getClientByFd(fd)->getuName() + "@" + getClientByFd(fd)->getipAdd() + " NICK " + vec[1] + "\n");
+	// sendToClient(fd, ":" + oldNick + "!" + getClientByFd(fd)->getuName() + "@" + getClientByFd(fd)->getipAdd() + " NICK " + vec[1] + "\n");
 	std::cout << "Nickname set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
 }
 
@@ -897,13 +906,15 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec) {
 void Server::handleUser(int fd, const std::vector<std::string>& vec) {
 
 	if (getClientByFd(fd)->getisPass() == false || getClientByFd(fd)->getisNick() == false) {
-		sendToClient(fd, "451 * :You have not registered\r\n");
+		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
 		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
 		return ;
+	} else if (getClientByFd(fd)->getisRegistered() == true) {
+		sendToClient(fd, ERR_ALREADYREGISTRED " *" + getClientByFd(fd)->getnName() + " :You may not reregister\r\n");
 	}
 	
 	if (vec.size() < 5) {
-		sendToClient(fd, "461 * USER :Not enough parameters\r\n");
+		sendToClient(fd, ERR_NEEDMOREPARAMS " * USER :Not enough parameters\r\n");
 		std::cerr << "Invalid USER command format from client [" << fd << "]" << std::endl;
 		return;
 	}
@@ -912,11 +923,13 @@ void Server::handleUser(int fd, const std::vector<std::string>& vec) {
 		Client *client = getClientByFd(fd);
 		
 		client->setuName(vec[1]);
+		client->setservName(vec[3]);
+		client->setrealName(vec[4]);
 		client->setisRegistered(true);
 		std::cout << "Username set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
 	}
 	else {
-		sendToClient(fd, "461 * USER :Not enough parameters\r\n");
+		sendToClient(fd, ERR_NEEDMOREPARAMS " * USER :Not enough parameters\r\n");
 		std::cerr << "Invalid USER command format from client [" << fd << "]" << std::endl;
 	}
 }

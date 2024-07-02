@@ -21,7 +21,6 @@
 #include <climits>
 #include "Util.hpp"
 
-
 class Server {
     private:
         std::string pass; // pass needed to connect to the server
@@ -76,8 +75,8 @@ class Server {
 
 
         // Capability Negotiation and new client registration
-        int  handlePass(int fd, const std::vector<std::string>& vec);
-        void handleNick(int fd, const std::vector<std::string>& vec);
+        void handlePass(int fd, const std::vector<std::string>& vec, bool isCap);
+        void handleNick(int fd, const std::vector<std::string>& vec, bool isCap);
         void handleUser(int fd, const std::vector<std::string>& vec);
         int  handleCommand(int fd, std::vector<std::string>& vec);
         void capCMD(Client* client, std::vector<std::string>& vec, int fd);

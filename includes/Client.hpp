@@ -12,7 +12,9 @@ class Client {
         int             fd; // file descriptor for client
         bool            operFlag; // operator flag for the commands
         std::string     nName; // nickname
-        std::string     uName; // username 
+        std::string     uName; // username
+		std::string		realName; // real name
+		std::string		servName; // server name
         std::string     ipAdd; // ip address
 		std::vector<class Channel> clientChannelList;
 
@@ -44,6 +46,8 @@ class Client {
         void setisCapNegotiated(bool flag);
         void setisPass(bool flag);
         void setisNick(bool flag);
+		void setrealName(const std::string& str);
+		void setservName(const std::string& str);
         void setisRegistered(bool flag);
         // ------------------//
         void removeChannel(const Channel& ch);
