@@ -590,12 +590,15 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 				switch(modestring[i]){
 					case 'i':
 						ch->setinvFlag(false);
+						std::cout << "Changed key flag to -" << std::endl; 
 						break ;
 					case 't':
 						ch->settopicFlag(false);
+						std::cout << "Changed key flag to -" << std::endl; 
 						break ;
 					case 'k':
 						ch->setkeyFlag(false);
+						std::cout << "Changed key flag to -" << std::endl; 
 						break ;
 					case 'o':
 						if (param >= line.size())
@@ -604,6 +607,7 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						param++;
 						break ;
 					case 'l':
+						std::cout << "Changed key flag to -" << std::endl; 
 						ch->setclientFlag(false);
 						break ;
 				}
@@ -611,20 +615,24 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 				switch(modestring[i]){
 					case 'i':
 						ch->setinvFlag(true);
+						std::cout << "Changed key flag to +" << std::endl; 
 						break ;
 					case 't':
 						ch->settopicFlag(true);
+						std::cout << "Changed key flag to +" << std::endl; 
 						break ;
 					case 'k':
 						if (param >= line.size())
 							break ;
 						setChannelKey(ch, cl, line[param]);
+						std::cout << "Changed key flag to +" << std::endl; 
 						param++;
 						break ;
 					case 'o':
 						if (param >= line.size())
 							break ;
 						ch->setClientOper(getClient(line[param]), modestring[i]);
+						std::cout << "Changed key flag to +" << std::endl; 
 						param++;
 						break ;
 					case 'l':
@@ -644,6 +652,22 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 		sendToClient(cl->getfd(), "461 * MODE :Not enough parameters\r\n");
 		// sendToClient(cl->getfd(), "Invalid use of MODE\r\n");
 	}
+}
+
+void Server::inviteCMD(std::vector<std::string> line, Client* cl){
+	if (line.size() == 3){
+		Client* tmp = getClient(line[1]);
+		Channel* tmpch = getChannel(line[1]);
+
+		if (!tmpch || !tmp)
+			return ;
+		if (tmpch->checkclientExist(cl) && tmpch->checkclientOper(cl)){
+			if (tmpch->checkclientExist(tmp))
+				std::cout << "Client is already in the channel" << std::endl;
+			// else we have to join client inside the channel;
+		}
+	} else
+		std::cout << "Invalid invite param" << std::endl;
 }
 
 int Server::setChannelLimit(Channel* chName, Client *cl, std::string str){

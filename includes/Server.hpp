@@ -70,6 +70,7 @@ class Server {
         void modeCMD(std::vector<std::string> line, Client *cl);
         void pingCMD(std::vector<std::string> line, Client* cl);
         void quitCMD(std::vector<std::string> line, Client* cl);
+		void inviteCMD(std::vector<std::string> line, Client* cl);
         // tester utils
 		void displayChannel();
 		void displayClient();
