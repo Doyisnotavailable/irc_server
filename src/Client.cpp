@@ -9,6 +9,8 @@ Client::Client() {
 	this->operFlag = false;
 	this->nName = "";
 	this->uName = "";
+	this->servName = "";
+	this->realName = "";
 	this->ipAdd = "";
 	this->isCapNegotiated = false;
 	this->isPass = false;
@@ -26,6 +28,8 @@ Client& Client::operator=(const Client& toasgn){
 		operFlag = toasgn.fd;
 		nName = toasgn.nName;
 		uName = toasgn.uName;
+		servName = toasgn.servName;
+		realName = toasgn.realName;
 		ipAdd = toasgn.ipAdd;
 		clientChannelList = toasgn.clientChannelList;
 		isCapNegotiated = toasgn.isCapNegotiated;
@@ -76,6 +80,14 @@ bool Client::getisRegistered() const {
 	return this->isRegistered;
 }
 
+// std::string Client::getservName() const {
+// 	return this->servName;
+// }
+
+// std::string Client::getrealName() const {
+// 	return this->realName;
+// }
+
 void Client::setfd(int fd) {
 	this->fd = fd;
 }
@@ -110,6 +122,14 @@ void Client::setisNick(bool flag) {
 
 void Client::setisRegistered(bool flag) {
 	this->isRegistered = flag;
+}
+
+void Client::setservName(const std::string& str) {
+	this->servName = str;
+}
+
+void Client::setrealName(const std::string& str) {
+	this->realName = str;
 }
 
 void Client::addChannel(const Channel& ch) {
