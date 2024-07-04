@@ -40,6 +40,7 @@ class Channel {
 		bool getclientFlag();
 		int getclientSize();
 		int getlimit();
+		std::string getMode();
 		std::vector<class Client> getclientList();
 
 		void setinvFlag(bool a);

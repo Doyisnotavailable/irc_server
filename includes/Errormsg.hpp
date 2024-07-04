@@ -23,6 +23,7 @@
 #define RPL_ENDOFMOTD " 376 "
 
 /** Channel RPLs **/
+#define RPL_CHANNELMODEIS "324 "
 #define RPL_NOTOPIC " 331 "
 #define RPL_TOPIC "332 "
 #define RPL_NAMREPLY "353 "
