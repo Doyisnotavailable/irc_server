@@ -53,13 +53,16 @@ class Server {
         void addChannel(const std::string& chName, Client& cl);
 		void removeClient(int fd);
         void removeClientAllChannels(int fd);
-		void checkReceived(std::string str, Client* cl);
+		int checkReceived(std::string str, Client* cl);
 		bool isChannel(const std::string& chname);
 
         void addClienttoChannel(Channel* chName, Client* cl);
 		int setChannelLimit(Channel* chName, Client* cl, std::string str);
 		void setChannelKey(Channel* chName, Client* cl, std::string str);
 		// commands
+        void passCMD(int fd, const std::vector<std::string>& vec, bool isCap);
+        void nickCMD(int fd, const std::vector<std::string>& vec, bool isCap);
+        void userCMD(int fd, const std::vector<std::string>& vec);
 		void joinCMD(std::vector<std::string> line, Client* cl);
         void joinChannel(std::string chName, const char* key, Client* cl);
         void joinPass(Channel* chName, const char* key, Client* cl);
@@ -76,10 +79,7 @@ class Server {
 
 
         // Capability Negotiation and new client registration
-        void handlePass(int fd, const std::vector<std::string>& vec, bool isCap);
-        void handleNick(int fd, const std::vector<std::string>& vec, bool isCap);
-        void handleUser(int fd, const std::vector<std::string>& vec);
-        int  handleCommand(int fd, std::vector<std::string>& vec);
+        void clAuthentication(int fd, std::vector<std::string>& vec);
         void capCMD(Client* client, std::vector<std::string>& vec, int fd);
         void sendCapabilities(int fd);
 
