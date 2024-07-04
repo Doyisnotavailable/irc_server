@@ -83,6 +83,19 @@ int Channel::getclientSize(){
 	return this->clientlist.size();
 }
 
+std::string Channel::getMode(){
+	std::string mode = "";
+	if (getinvFlag())
+		mode += "i";
+	if (getkeyFlag())
+		mode += "k";
+	if (gettopicFlag())
+		mode += "t";
+	if (getclientFlag())
+		mode += "l";
+	return mode;
+}
+
 std::vector<class Client> Channel::getclientList(){
 	return this->clientlist;
 }

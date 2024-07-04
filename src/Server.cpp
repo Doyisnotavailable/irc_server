@@ -578,7 +578,7 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 		char c = '\0';
 		size_t param = 3;
 		if (modestring[0] == '\0') {
-			sendToClient(cl->getfd(), "324 * " + ch->getchannelName() + " :Channel modes are " + " " + "\r\n");
+			sendToClient(cl->getfd(), RPL_CHANNELMODEIS + ch->getchannelName() + " " + ch->getMode() + "\r\n");
 			return ;
 		}
 		if (modestring[0] != '+' && modestring[0] != '-'){
@@ -632,8 +632,15 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 					case 'l':
 						if (param >= line.size())
 							break ;
-						if (!setChannelLimit(ch, cl, line[param]))
-							sendToChannel(*ch, "changing limit successful msg");
+						if (!setChannelLimit(ch, cl, line[param])) {
+							// sendToChannel(*ch, cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " MODE " + ch->getchannelName() + " +l " + line[param] + "\r\n");
+							// sendToChannel(*ch, "changing limit successful msg\r\n");
+
+							for (size_t i = 0; i < ch->getclientList().size(); i++) {
+								sendToClient(ch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + line[param] + "\r\n");
+							}
+
+						}
 						else
 							sendToClient(cl->getfd(), "fail");
 						param++;
@@ -643,6 +650,20 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 		}
 	}
 	else {
+		if (line.size() == 2) {
+			std::cout << "line size is " << line.size() << std::endl;
+			Channel* ch = getChannel(line[1]);
+			if (ch == NULL){
+				for (size_t i = 0; i < ch->getclientList().size(); i++) {
+					sendToClient(ch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + line[1] + "\r\n");
+				}
+				// sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + line[1] + " :No such channel\r\n");
+				// sendToClient(cl->getfd(), cl->getuName() + " " + line[1] + " :No such channel\r\n");
+				return ;
+			}
+			sendToClient(cl->getfd(), RPL_CHANNELMODEIS + ch->getchannelName() + " " + ch->getMode() + "\r\n");
+			return ;
+		}
 		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS " * MODE :Not enough parameters\r\n");
 		// sendToClient(cl->getfd(), "Invalid use of MODE\r\n");
 	}
@@ -801,7 +822,7 @@ void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
 
 // Handle the PASS command from the client. Remove the client if the password is incorrect.
 void Server::handlePass(int fd, const std::vector<std::string>& vec, bool isCap) {
-
+	(void)isCap;
 	if (getClientByFd(fd)->getisPass() == true) {
 		sendToClient(fd, ERR_ALREADYREGISTRED " * :You may not reregister\r\n");
 		std::cerr << "Client [" << fd << "] may not reregister" << std::endl;
@@ -814,13 +835,13 @@ void Server::handlePass(int fd, const std::vector<std::string>& vec, bool isCap)
 		return ;
 	}
 
-	if (vec.size() != 2) {
-		if (isCap == false) {
-			sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
-			std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
-			return ;
-		}
-	}
+	// if (vec.size() != 2) {
+	// 	if (isCap == false) {
+	// 		sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
+	// 		std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
+	// 		return ;
+	// 	}
+	// }
 
 	if (vec[1] == this->pass) {
 		getClientByFd(fd)->setisPass(true);
@@ -855,7 +876,7 @@ bool Server::isNickValid(const std::string& nick) {
 // Handle the NICK command from the client. Set the nickname for the client.
 // Send an error message if the nickname is already in use. irssi out automatically set the nickname to a different but similar one.
 void Server::handleNick(int fd, const std::vector<std::string>& vec, bool isCap) {
-
+	(void)isCap;
 	if (getClientByFd(fd)->getisPass() == false) {
 		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
 		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
@@ -868,13 +889,13 @@ void Server::handleNick(int fd, const std::vector<std::string>& vec, bool isCap)
 		return;
 	}
 
-	if (vec.size() != 2) {
-		if (isCap == false) {
-			sendToClient(fd, ERR_NEEDMOREPARAMS " * NICK :Not enough parameters\r\n");
-			std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
-			return ;
-		}
-	}
+	// if (vec.size() != 2) {
+	// 	if (isCap == false) {
+	// 		sendToClient(fd, ERR_NEEDMOREPARAMS " * NICK :Not enough parameters\r\n");
+	// 		std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
+	// 		return ;
+	// 	}
+	// }
 
 	if (!isNickValid(vec[1])) {
 		sendToClient(fd, ERR_ERRONEUSNICKNAME + vec[1] + " :Erroneous Nickname\r\n");
