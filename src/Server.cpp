@@ -176,53 +176,6 @@ void Server::sendWelcome(int fd, Client* client) {
 	client->setisCapNegotiated(true);
 }
 
-void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
-
-	if (vec.size() == 2) {
-		Channel *channel = getChannel(vec[1]);
-
-		if (!channel) {
-			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + vec[1] + ":No such channel\r\n");
-			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
-			return ;
-		} else {
-			sendToClient(cl->getfd(), RPL_TOPIC + channel->getchannelName() + ":" + channel->getTopic() + "\r\n");
-			return ;
-		}
-	}
-
-	if (vec.size() < 3) {
-		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS "* TOPIC :Not enough parameters\r\n");
-		std::cerr << "Invalid TOPIC command format from client [" << cl->getfd() << "]" << std::endl;
-		return ;
-	}
-
-	Channel *channel = getChannel(vec[1]);
-	if (!channel) {
-		sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + vec[1] + ":No such channel\r\n");
-		std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
-		return ;
-	}
-
-	if (!channel->checkclientExist(cl)) {
-		sendToClient(cl->getfd(), ERR_NOTONCHANNEL + vec[1] + " :You're not on that channel\r\n");
-		std::cerr << "Client is not in the channel for client [" << cl->getfd() << "]" << std::endl;
-		return ;
-	}
-
-	std::string newTopic = vec[2];
-	for (size_t i = 3; i < vec.size(); i++) {
-		newTopic += " " + vec[i];
-	}
-
-	channel->setTopic(newTopic);
-	for (size_t i = 0; i < channel->getclientList().size(); i++) {
-		sendToClient(channel->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + channel->getchannelName() + " :" + newTopic + "\r\n");
-	}
-
-	// sendToClient(cl->getfd(), ":" + cl->getnName() + " TOPIC " + channel->getchannelName() + " :" + newTopic + "\r\n");
-	return ;
-}
 
 int Server::checkReceived(std::string str, Client* cl) {
 
@@ -1073,4 +1026,53 @@ void sigHandler(int signum) {
 	(void)signum;
 	::stopflag = true;
 	std::cout << "\nServer is shutting down" << std::endl;
+}
+
+void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
+	if (vec.size() >= 2) {
+		Channel* tmpch = getChannel(vec[1]);
+
+		if (tmpch &&!tmpch->checkclientExist(cl)) {
+			if (tmpch->gettopicFlag() == false) {
+				sendToClient(cl->getfd(), ERR_NOTONCHANNEL + vec[1] + " :You're not on that channel\r\n");
+				std::cerr << "Client is not in the channel for client [" << cl->getfd() << "]" << std::endl;
+				return ;
+			}
+		}
+
+		if (vec.size() == 2 && tmpch != NULL){
+			sendToClient(cl->getfd(), RPL_TOPIC + tmpch->getchannelName() + ":" + tmpch->getTopic() + "\r\n");
+		} else if (vec.size() > 2 && tmpch != NULL) {
+			// if client a channel operator
+			if (!tmpch->checkclientOper(cl)) {
+				// check channel flag for topic
+				if (tmpch->gettopicFlag() == false) {
+					sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + tmpch->getchannelName() + " :You're not channel operator\r\n");
+					std::cerr << "Client is not a channel operator for client [" << cl->getfd() << "]" << std::endl;
+					return ;
+				}
+			}
+
+			std::string newTopic = vec[2];
+			for (size_t i = 3; i < vec.size(); i++) {
+				newTopic += " " + vec[i];
+			}
+
+			tmpch->setTopic(newTopic);
+			for (size_t i = 0; i < tmpch->getclientList().size(); i++) {
+				sendToClient(tmpch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + tmpch->getchannelName() + " :" + newTopic + "\r\n");
+			}
+			
+		} else {
+			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + vec[1] + " : No such channel\r\n");
+			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
+			return ;
+		}
+	} else {
+		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS "* TOPIC :Not enough parameters\r\n");
+		std::cerr << "Invalid TOPIC command format from client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+	// sendToClient(cl->getfd(), ":" + cl->getnName() + " TOPIC " + channel->getchannelName() + " :" + newTopic + "\r\n");
+	return ;
 }
