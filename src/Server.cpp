@@ -557,16 +557,15 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 
 	// We are only requered to implement channel modes.
 	// if Mode is called for non channel (on client), return.
-	if (line[1][0] != '#') {
-		std::cout << std::endl << "MODE CALLED FOR USER NOT CHANNEL" << std::endl;
-		return ;
-	}
-
-	if (line.size() >= 3){
+	if (line.size() >= 2){
 		Channel* ch = getChannel(line[1]);
 		if (ch == NULL){
 			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + line[1] + " :No such channel\r\n");
 			// sendToClient(cl->getfd(), cl->getuName() + " " + line[1] + " :No such channel\r\n");
+			return ;
+		}
+		if (line.size() == 2){
+			sendToClient(cl->getfd(), cl->getnName() + " " + RPL_CHANNELMODEIS + ch->getchannelName() + " +" + ch->getMode() + "\r\n");
 			return ;
 		}
 		if (!ch->checkclientOper(cl)){
@@ -656,22 +655,9 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 				}
 			}
 		}
+		sendToChannel(*ch, ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");	
 	}
 	else {
-		if (line.size() == 2) {
-			std::cout << "line size is " << line.size() << std::endl;
-			Channel* ch = getChannel(line[1]);
-			if (ch == NULL){
-				for (size_t i = 0; i < ch->getclientList().size(); i++) {
-					sendToClient(ch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + line[1] + "\r\n");
-				}
-				// sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + line[1] + " :No such channel\r\n");
-				// sendToClient(cl->getfd(), cl->getuName() + " " + line[1] + " :No such channel\r\n");
-				return ;
-			}
-			sendToClient(cl->getfd(), RPL_CHANNELMODEIS + ch->getchannelName() + " " + ch->getMode() + "\r\n");
-			return ;
-		}
 		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS " * MODE :Not enough parameters\r\n");
 		// sendToClient(cl->getfd(), "Invalid use of MODE\r\n");
 	}
@@ -688,6 +674,10 @@ void Server::inviteCMD(std::vector<std::string> line, Client* cl){
 			if (tmpch->checkclientExist(tmp))
 				std::cout << "Client is already in the channel" << std::endl;
 			// else we have to join client inside the channel;
+			else {
+				tmpch->addClient(*tmp);
+				sendToClient(cl->getfd(), cl->getnName() + " " + tmp->getuName() + " " + tmpch->getchannelName() + "\r\n");
+			}
 		}
 	} else
 		std::cout << "Invalid invite param" << std::endl;
