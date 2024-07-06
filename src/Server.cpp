@@ -551,11 +551,11 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 				switch(modestring[i]){
 					case 'i':
 						ch->setinvFlag(false);
-						std::cout << "Changed key flag to -" << std::endl; 
+						std::cout << "Changed inv flag to -" << std::endl; 
 						break ;
 					case 't':
 						ch->settopicFlag(false);
-						std::cout << "Changed key flag to -" << std::endl; 
+						std::cout << "Changed topic flag to -" << std::endl; 
 						break ;
 					case 'k':
 						ch->setkeyFlag(false);
@@ -564,7 +564,8 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 					case 'o':
 						if (param >= line.size())
 							break ;
-						ch->setClientOper(getClient(line[param]), modestring[i]);
+						ch->setClientOper(getClient(line[param]), c);
+						ch->displayoper();
 						param++;
 						break ;
 					case 'l':
@@ -576,11 +577,11 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 				switch(modestring[i]){
 					case 'i':
 						ch->setinvFlag(true);
-						std::cout << "Changed key flag to +" << std::endl; 
+						std::cout << "Changed inv flag to +" << std::endl; 
 						break ;
 					case 't':
 						ch->settopicFlag(true);
-						std::cout << "Changed key flag to +" << std::endl; 
+						std::cout << "Changed topic flag to +" << std::endl; 
 						break ;
 					case 'k':
 						if (param >= line.size())
@@ -592,8 +593,8 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 					case 'o':
 						if (param >= line.size())
 							break ;
-						ch->setClientOper(getClient(line[param]), modestring[i]);
-						std::cout << "Changed key flag to +" << std::endl; 
+						ch->setClientOper(getClient(line[param]), c);
+						ch->displayoper();
 						param++;
 						break ;
 					case 'l':
@@ -602,11 +603,9 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						if (!setChannelLimit(ch, cl, line[param])) {
 							// sendToChannel(*ch, cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " MODE " + ch->getchannelName() + " +l " + line[param] + "\r\n");
 							// sendToChannel(*ch, "changing limit successful msg\r\n");
-
-							for (size_t i = 0; i < ch->getclientList().size(); i++) {
-								sendToClient(ch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + line[param] + "\r\n");
-							}
-
+							// for (size_t i = 0; i < ch->getclientList().size(); i++) {
+							// 	sendToClient(ch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + line[param] + "\r\n");
+							// }		
 						}
 						else
 							sendToClient(cl->getfd(), "fail");

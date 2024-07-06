@@ -176,8 +176,10 @@ void Channel::setKey(std::string str){
 }
 
 void Channel::setClientOper(Client* cl, char c){
-	if (cl == NULL)
+	if (cl == NULL){
+		std::cout << "Client doesnt exist" << std::endl;
 		return ;
+	}
 	if (c == '-'){
 		for (size_t i = 0; i < operlist.size(); ++i){
 			if (cl->getfd() == operlist[i].getfd()){
@@ -189,5 +191,11 @@ void Channel::setClientOper(Client* cl, char c){
 		if (!checkclientOper(cl)){
 			operlist.push_back(*cl);
 		}
+	}
+}
+
+void Channel::displayoper(){
+	for(size_t i = 0; i < operlist.size(); ++i){
+		std::cout << operlist[i].getnName() << std::endl;
 	}
 }
