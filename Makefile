@@ -21,7 +21,7 @@ all:                    $(NAME)
 bonus:                  $(BONUS_NAME)
 
 $(NAME):                $(OBJ_FILES)
-						$(CXX) $(CXXFLAGS) $(OBJ_FILES) -o $(NAME)∂
+						$(CXX) $(CXXFLAGS) $(OBJ_FILES) -o $(NAME)
 
 $(BONUS_NAME):          $(BONUS_OBJ_FILES)
 						$(CXX) $(CXXFLAGS) $(BONUS_OBJ_FILES) -o $(BONUS_NAME)
