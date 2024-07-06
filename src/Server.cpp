@@ -257,9 +257,10 @@ void Server::addChannel(const std::string& chName, Client& cl) {
 	// dont forget check channel name if its valid.
 	Channel ch(chName, cl);
 
+
 	channels.push_back(ch);
-	cl.addChannel(ch);
-	// sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
+	// cl.addChannel(ch);
+	sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + cl.getipAdd() + " JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), RPL_TOPIC + cl.getnName() + " " + chName + " :" + ch.getTopic() + "\r\n");
 	sendToClient(cl.getfd(), RPL_NAMREPLY + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");

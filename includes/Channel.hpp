@@ -42,6 +42,7 @@ class Channel {
 		int getlimit();
 		std::string getMode();
 		std::vector<class Client> getclientList();
+		std::vector<class Client>& getoperList();
 
 		void setinvFlag(bool a);
 		void setkeyFlag(bool a);
@@ -59,6 +60,9 @@ class Channel {
 		std::string getTopic() const;
 		void setTopic(const std::string& top);
 		void removeclientOper(Client* cl);
+		void displayoper();
 };
+
+
 
 #endif
