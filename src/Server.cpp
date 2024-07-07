@@ -784,6 +784,7 @@ void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
 	} else if (vec[1] == "REQ" || vec[1] == "req") {
 		// std::string capResponse = "CAP * ACK " + vec[2] + "\r\n";
 		sendToClient(fd, "CAP * ACK " + vec[2] + "\r\n");
+		vec.erase(vec.begin()); // remove the CAP command. This is crucial for the client to be able to process the rest of the command (Especially for the NICK command, if nickname already exists, the client will not be able to change it without the CAP command being removed from the command vector)
 	} else if (vec[1] == "END" || vec[1] == "end") {
 		std::cout << "CAP END received from client [" << fd << "]" << std::endl;
 		// std::string capResponse = "CAP * ACK :" + vec[2] + "\r\n";
