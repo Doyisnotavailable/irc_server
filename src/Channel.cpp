@@ -50,7 +50,7 @@ void Channel::addClient(Client& client) {
 	// this->clientlist.push_back(client);
 	cl->addChannel(ch);
 	this->clientlist.push_back(*cl);
-	this->operlist.push_back(*cl);
+	// this->operlist.push_back(*cl);
 }
 
 std::string Channel::getchannelName() const {
