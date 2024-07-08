@@ -50,6 +50,7 @@ void Channel::addClient(Client& client) {
 	// this->clientlist.push_back(client);
 	cl->addChannel(ch);
 	this->clientlist.push_back(*cl);
+	// this->operlist.push_back(*cl);
 }
 
 std::string Channel::getchannelName() const {
@@ -99,6 +100,11 @@ std::string Channel::getMode(){
 std::vector<class Client> Channel::getclientList(){
 	return this->clientlist;
 }
+
+std::vector<class Client>& Channel::getoperList(){
+	return this->operlist;
+}
+
 bool Channel::joinFlags() {
 	if (getinvFlag() || getkeyFlag() || getclientFlag())
 		return true;

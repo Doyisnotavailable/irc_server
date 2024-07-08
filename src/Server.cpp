@@ -257,9 +257,10 @@ void Server::addChannel(const std::string& chName, Client& cl) {
 	// dont forget check channel name if its valid.
 	Channel ch(chName, cl);
 
+
 	channels.push_back(ch);
-	cl.addChannel(ch);
-	// sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
+	// cl.addChannel(ch);
+	sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + cl.getipAdd() + " JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), RPL_TOPIC + cl.getnName() + " " + chName + " :" + ch.getTopic() + "\r\n");
 	sendToClient(cl.getfd(), RPL_NAMREPLY + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
@@ -709,10 +710,10 @@ void Server::quitCMD(std::vector<std::string> line, Client* cl){
 void Server::sendCapabilities(int fd) {
 
     std::vector<std::string> serverCapabilities;
-    // serverCapabilities.push_back("TLS");
-    // serverCapabilities.push_back("UTF8_ONLY");
-    // serverCapabilities.push_back("CHANNEL_MODES");
-	// serverCapabilities.push_back("multi-prefix");
+    serverCapabilities.push_back("TLS");
+    serverCapabilities.push_back("UTF8_ONLY");
+    serverCapabilities.push_back("CHANNEL_MODES");
+	serverCapabilities.push_back("multi-prefix");
 	serverCapabilities.push_back("server-time");
 
     std::string capabilityList = "CAP * LS :";
@@ -747,10 +748,14 @@ void Server::clAuthentication(int fd, std::vector<std::string>& vec) {
 		return ;
 	}
 
-	if (vec[0] ==  "CAP" && vec[1] == "END")
-		isCap = true;
+	// if (vec[0] ==  "CAP" && vec[1] == "END")
+	// 	isCap = true;
 	
 	for (size_t i = 0; i < vec.size(); i++) {
+		if (vec[0] ==  "CAP") {
+			isCap = true;
+			// std::cout << "CAP END received from client [" << fd << "]" << std::endl;
+		}
 		if (vec[0] == "PASS" || vec[0] == "pass")
 			passCMD(fd, vec, isCap);
 		else if (vec[0] == "NICK" || vec[0] == "nick") 
@@ -775,23 +780,24 @@ void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
 		if (client->getisCapNegotiated() == true) {
 			return ;
 		}
-		setClientInfo(fd); // set the client info. Send the capabilities to the client.
+		sendCapabilities(fd); // set the client info. Send the capabilities to the client.
 	} else if (vec[1] == "REQ" || vec[1] == "req") {
-		std::string capResponse = "CAP * ACK :" + vec[2] + "\r\n";
-		sendToClient(fd, capResponse);
+		// std::string capResponse = "CAP * ACK " + vec[2] + "\r\n";
+		sendToClient(fd, "CAP * ACK " + vec[2] + "\r\n");
+		vec.erase(vec.begin()); // remove the CAP command. This is crucial for the client to be able to process the rest of the command (Especially for the NICK command, if nickname already exists, the client will not be able to change it without the CAP command being removed from the command vector)
 	} else if (vec[1] == "END" || vec[1] == "end") {
-		
-		std::string capResponse = "CAP * ACK :" + vec[2] + "\r\n";
-		sendToClient(fd, capResponse);		
-
-	} else {
+		std::cout << "CAP END received from client [" << fd << "]" << std::endl;
+		// std::string capResponse = "CAP * ACK :" + vec[2] + "\r\n";
+		// sendToClient(fd, capResponse);		
+	}
+	 else {
 		std::cerr << "Unknown CAP command received from client [" << fd << "]: " << vec[1] << std::endl;
 	}
 }
 
 // Handle the PASS command from the client. Remove the client if the password is incorrect.
 void Server::passCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
-	(void)isCap;
+	// (void)isCap;
 	if (getClientByFd(fd)->getisPass() == true) {
 		sendToClient(fd, ERR_ALREADYREGISTRED " * :You may not reregister\r\n");
 		std::cerr << "Client [" << fd << "] may not reregister" << std::endl;
@@ -846,7 +852,7 @@ bool Server::isNickValid(const std::string& nick) {
 // Handle the NICK command from the client. Set the nickname for the client.
 // Send an error message if the nickname is already in use. irssi out automatically set the nickname to a different but similar one.
 void Server::nickCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
-	(void)isCap;
+	// (void)isCap;
 	if (getClientByFd(fd)->getisPass() == false) {
 		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
 		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
@@ -990,16 +996,16 @@ Client* Server::getClientByFd(int fd) {
 }
 
 // Set the client information. Send the capabilities to the client.
-void Server::setClientInfo(int fd) {
-	Client client;
+// void Server::setClientInfo(int fd) {
+// 	Client client;
 
-	for (size_t i = 0; i < clients.size(); i++) {
-		if (clients[i].getfd() == fd) {
-			client = clients[i];
-			sendCapabilities(fd); // Send the capabilities to the client.
-		}
-	}
-}
+// 	for (size_t i = 0; i < clients.size(); i++) {
+// 		if (clients[i].getfd() == fd) {
+// 			client = clients[i];
+// 			sendCapabilities(fd); // Send the capabilities to the client.
+// 		}
+// 	}
+// }
 
 std::string Server::addStrings(std::vector<std::string> lines, size_t i) {
 	std::string tmp;

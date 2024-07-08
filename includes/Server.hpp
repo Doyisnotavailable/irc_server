@@ -19,6 +19,9 @@
 #include <sstream>
 #include <ctype.h>
 #include <climits>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 #include "Util.hpp"
 
 class Server {
