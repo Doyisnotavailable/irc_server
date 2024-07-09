@@ -16,6 +16,10 @@ const char* InvalidPort::what() const throw(){
     return "Invalid Port range\n";
 };
 
+const char* InvalidPassword::what() const throw(){
+    return "Invalid Password\n";
+};
+
 const char* Sockaddroption::what() const throw(){
     return "Failed to set Socket address option to reuseable\n";
 };

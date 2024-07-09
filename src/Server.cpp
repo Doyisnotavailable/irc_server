@@ -1,4 +1,5 @@
 #include "../includes/Server.hpp"
+#include "../includes/Util.hpp"
 // #include "../includes/Errormsg.hpp"
 #include <algorithm>
 #include <poll.h>
@@ -14,22 +15,30 @@ Server::Server(std::string port, std::string pass) {
             throw InvalidInput();
     }
 
-	for (size_t i = 0; i < pass.length(); i++) {
-        if (!std::isdigit(pass[i]))
-            throw InvalidInput();
-    }
+	// PASS CAN CONTAIN ANYTHING
+	// for (size_t i = 0; i < pass.length(); i++) { 
+    //     if (!std::isdigit(pass[i]))
+    //         throw InvalidInput();
+    // }
  
     // if (!std::all_of(port.begin(), port.end(), std::isdigit()))
     //     throw InvalidInput();
     // if(!std::all_of(pass.begin(), pass.end(), std::isalnum()))
     //     throw InvalidInput();
-    int a = std::atoi(port.c_str()); // PS: Above INT_MAX can cause overflow. Better to use std::strtol
+    // int a = std::atoi(port.c_str()); // PS: Above INT_MAX can cause overflow. Better to use std::strtol
+	int a = parse_port(port.c_str());
+	if (a == -1)
+		throw InvalidPort();
+
+	if (parse_password(pass.c_str()) == -1)
+		throw InvalidPassword();
+	// int a = 6667;
 	// int a = 6667;
 	std::cout << a << std::endl;
-    if (a < 0 || a > 65535) {
-		std::cout << "invalid port cout" << std::endl;
-		throw InvalidPort();
-	}
+    // if (a < 0 || a > 65535) {
+	// 	std::cout << "invalid port cout" << std::endl;
+	// 	throw InvalidPort();
+	// }
     this->pass = pass;
     this->port = a;
     this->stopflag = false;

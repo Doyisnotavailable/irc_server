@@ -4,6 +4,18 @@ int sendToServer(int sockfd, const std::string& message) {
 	return send(sockfd, message.c_str(), message.length(), 0);
 }
 
+std::string generateRandomNick() {
+    std::string nick;
+    std::srand(time(0));
+    
+    for (int i = 0; i < 4; i++) {
+        char c = static_cast<char>(std::rand() % 26 + 'A');
+        nick += std::toupper(c);
+    }
+
+    return nick;
+}
+
 int main(int ac, char **av) {
 
 	if (ac != 5) {
@@ -66,14 +78,17 @@ int main(int ac, char **av) {
     // Send the password
     sendToServer(sockfd, "PASS " + std::string(password) + "\r\n");
 	usleep(1000000); 
-    sendToServer(sockfd, "NICK BOT\r\n");
+    // sendToServer(sockfd, "NICK BOT\r\n");
+    std::string nick = generateRandomNick();
+    // std::cout << "Generated random nickname: " << nick << std::endl;
+    sendToServer(sockfd, "NICK " + nick + "\r\n");
 	usleep(1000000);
     sendToServer(sockfd, "USER BOT BOT localhost :BOT\r\n");
 	usleep(1000000);
 
 
     // Join a channel
-    sendToServer(sockfd, "JOIN #chan\r\n");
+    sendToServer(sockfd, "JOIN #" + channelName +  "\r\n");
 
     // Create the bot instance
     BOT bot;

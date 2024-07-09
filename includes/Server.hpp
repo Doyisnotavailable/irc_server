@@ -22,6 +22,9 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+// #include <random>
+#include <algorithm>
+#include <cctype>
 #include "Util.hpp"
 
 class Server {

@@ -1,6 +1,7 @@
 #include "../includes/Util.hpp"
 #include <iostream>
 #include <cctype>
+#include <cstdlib>
 #include <string>
 
 std::vector<std::string> split(const std::string& str, char delimiter) {
@@ -49,4 +50,41 @@ bool checkpass(std::string& str){
 			return false ;
 	}
 	return true;
+}
+
+int parse_port(const char *str) {
+    char *endptr;
+    double port;
+
+    port = std::strtod(str, &endptr);
+
+    if (*endptr != '\0' || str == endptr) {
+        return -1;  /* Invalid input */
+    }
+
+    if (port < 1024 || port > 49151) {      // 65535 may want to change this as the upper limit
+        return -1;  /* Out of valid range */
+    }
+
+    return (int)port;
+}
+
+
+int parse_password(const char *str) {
+    if (str == NULL || str[0] == '\0') {
+        return -1;
+    }
+
+    std::string password(str);
+    if (password.size() < 4) {
+        return -1;
+    }
+
+    for (size_t i = 0; i < password.size(); i++) {
+        if (!std::isalnum(password[i]) && !std::ispunct(password[i])) {
+            return -1;
+        }
+    }
+
+    return 0;
 }

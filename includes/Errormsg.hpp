@@ -64,6 +64,10 @@ class InvalidPort: public std::exception{
     virtual const char* what() const throw();
 };
 
+class InvalidPassword: public std::exception{
+    virtual const char* what() const throw();
+};
+
 class SockCreation: public std::exception{
     virtual const char* what() const throw();
 };
