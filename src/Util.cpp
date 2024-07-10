@@ -88,3 +88,10 @@ int parse_password(const char *str) {
 
     return 0;
 }
+
+// Utility function to convert int to string
+std::string intToString(int number) {
+    std::ostringstream oss;
+    oss << number;
+    return oss.str();
+}

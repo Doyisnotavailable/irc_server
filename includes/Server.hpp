@@ -27,6 +27,9 @@
 #include <cctype>
 #include "Util.hpp"
 
+#define MAX_CLIENTS 100
+#define MAX_NICK_LENGTH 12
+
 class Server {
     private:
         std::string pass; // pass needed to connect to the server
@@ -36,6 +39,7 @@ class Server {
         std::vector<class Client> clients;  // all of  the clients in server
         std::vector<class Channel> channels; // channels available in all server
         std::vector<struct pollfd> pollfds; // used for i/o of fds
+        int clientCount;
         Server();
     public:
         Server(std::string port, std::string pass);
@@ -46,6 +50,7 @@ class Server {
         int getport() const;
         int getserverfd() const;
         bool getstopflag() const;
+        int getclientCount() const;
         Client* getClient(int fd); // finding client using its fd
         Client* getClient(const std::string& name);
         Channel* getChannel(const std::string& chname);
@@ -56,6 +61,7 @@ class Server {
         void receive(int fd); // get incoming messages can make receive and send to clients in one function still not sure about that
         void addClient();
 		void setClient();
+        void setClientCount(int count);
         void addChannel(const std::string& chName, Client& cl);
 		void removeClient(int fd);
         void removeClientAllChannels(int fd);

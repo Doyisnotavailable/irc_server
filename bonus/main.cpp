@@ -12,7 +12,7 @@ std::string generateRandomNick() {
         char c = static_cast<char>(std::rand() % 26 + 'A');
         nick += std::toupper(c);
     }
-
+    std::cout << "generated nick = " << nick << std::endl;
     return nick;
 }
 
@@ -89,6 +89,8 @@ int main(int ac, char **av) {
 
     // Join a channel
     sendToServer(sockfd, "JOIN #" + channelName +  "\r\n");
+    usleep(1000000);
+    sendToServer(sockfd, "TOPIC #" + channelName + " BOT supervised channel\r\n");
 
     // Create the bot instance
     BOT bot;
