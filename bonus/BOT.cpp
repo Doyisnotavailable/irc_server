@@ -5,16 +5,8 @@ BOT::BOT() {
 	swearWords.push_back("SHIT");
 	swearWords.push_back("DAMN");
 	swearWords.push_back("HELL");
-	swearWords.push_back("FUCK");
-	swearWords.push_back("ASSHOLE");
-	swearWords.push_back("BASTARD");
-	swearWords.push_back("WHORE");
-	// = {
-	// 		"SHIT", "DAMN", "HELL", "FUCK", "CRAP", "ASSHOLE", "BITCH", "BASTARD",
-	// 		"CUNT", "DICK", "PISS", "PRICK", "SLUT", "WHORE", "TWAT", "WANKER"
-	// 	};
-
-
+	// swearWords.push_back("ASSHOLE");
+	// swearWords.push_back("BASTARD");
 }
 
 BOT::~BOT() {
@@ -50,12 +42,5 @@ bool BOT::containsSwearWord(const std::string& msg) {
         }
     }
     return false;
-}
-
-void sendIrcCommand(int sockfd, const std::string& command) {
-    std::string fullCommand = command + "\r\n";
-    if (send(sockfd, fullCommand.c_str(), fullCommand.length(), 0) < 0) {
-        std::cerr << "Error sending command: " << command << std::endl;
-    }
 }
 

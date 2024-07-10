@@ -1,4 +1,5 @@
 #include "../includes/Server.hpp"
+#include "../includes/Util.hpp"
 // #include "../includes/Errormsg.hpp"
 #include <algorithm>
 #include <poll.h>
@@ -14,25 +15,34 @@ Server::Server(std::string port, std::string pass) {
             throw InvalidInput();
     }
 
-	for (size_t i = 0; i < pass.length(); i++) {
-        if (!std::isdigit(pass[i]))
-            throw InvalidInput();
-    }
+	// PASS CAN CONTAIN ANYTHING
+	// for (size_t i = 0; i < pass.length(); i++) { 
+    //     if (!std::isdigit(pass[i]))
+    //         throw InvalidInput();
+    // }
  
     // if (!std::all_of(port.begin(), port.end(), std::isdigit()))
     //     throw InvalidInput();
     // if(!std::all_of(pass.begin(), pass.end(), std::isalnum()))
     //     throw InvalidInput();
-    int a = std::atoi(port.c_str()); // PS: Above INT_MAX can cause overflow. Better to use std::strtol
+    // int a = std::atoi(port.c_str()); // PS: Above INT_MAX can cause overflow. Better to use std::strtol
+	int a = parse_port(port.c_str());
+	if (a == -1)
+		throw InvalidPort();
+
+	if (parse_password(pass.c_str()) == -1)
+		throw InvalidPassword();
+	// int a = 6667;
 	// int a = 6667;
 	std::cout << a << std::endl;
-    if (a < 0 || a > 65535) {
-		std::cout << "invalid port cout" << std::endl;
-		throw InvalidPort();
-	}
+    // if (a < 0 || a > 65535) {
+	// 	std::cout << "invalid port cout" << std::endl;
+	// 	throw InvalidPort();
+	// }
     this->pass = pass;
     this->port = a;
     this->stopflag = false;
+	this->clientCount = 0;
 
     initserverSock();
     startServer();
@@ -106,10 +116,22 @@ void Server::eraseClient(Client* cl) {
 }
 
 void Server::receive(int fd) {
-	char str[32767];
+	// char str[32767];
+	char str[512];
 	memset(str, 0, sizeof(str));
 
 	size_t size = recv(fd, str, sizeof(str) - 1, 0);
+	// std::cout << "size = " << size << std::endl << std::endl;
+
+	// Parse for maximum size of message
+	if (size > 510) {
+		Client *cl = getClient(fd);
+		if (!cl)
+			return ;
+		sendToClient(cl->getfd(), ERR_INPUTTOOLONG + cl->getnName() + " :Input line was too long\r\n");
+		// std::cout << "############## Input line was too long" << std::endl;
+		return ;
+	}
 
 	if (size <= 0) {
 		std::cout << "Client " << this->getClient(fd)->getfd() << " disconnected" << std::endl;
@@ -155,6 +177,14 @@ void Server::receive(int fd) {
 
 // Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.
 void Server::sendWelcome(int fd, Client* client) {
+	std::string welcomeMessage = 
+		"**********************************************\n"
+		"*                                            *\n"
+		"*            Welcome to the IRC_M&Ms         *\n"
+		"*                                            *\n"
+		"*       Developed by Martin and Michael      *\n"
+		"*                                            *\n"
+		"**********************************************\n";
 
 	sendToClient(fd, ":" + client->getuName() + RPL_WELCOME + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + client->getipAdd() + "\r\n"); // 001 RPL_WELCOME
     sendToClient(fd, ":" + client->getuName() + RPL_YOURHOST + client->getnName() + " :Your host is IRC_M2, running version APEX.1.0\r\n"); // 002 RPL_YOURHOST
@@ -166,14 +196,16 @@ void Server::sendWelcome(int fd, Client* client) {
     sendToClient(fd, ":" + client->getuName() + RPL_LUSEROP + client->getnName() + " 2 :operator(s) online\r\n"); // 252 RPL_LUSEROP
     sendToClient(fd, ":" + client->getuName() + RPL_LUSERUNKNOWN + client->getnName() + " 1 :unknown connection(s)\r\n"); // 253 RPL_LUSERUNKNOWN
     sendToClient(fd, ":" + client->getuName() + RPL_LUSERCHANNELS + client->getnName() + " 5 :channels formed\r\n"); // 254 RPL_LUSERCHANNELS
-    sendToClient(fd, ":" + client->getuName() + RPL_LUSERME + client->getnName() + " :I have 10 clients and 1 servers\r\n"); // 255 RPL_LUSERME
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERME + client->getnName() + " :I have " + intToString(this->clientCount) + " clients and 1 servers\r\n"); // 255 RPL_LUSERME	
 
     sendToClient(fd, ":" + client->getuName() + RPL_MOTDSTART + client->getnName() + " :- " + client->getuName() + " Message of the Day -\r\n"); // 375 RPL_MOTDSTART
     sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Welcome to the best IRC server!\r\n"); // 372 RPL_MOTD
     sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Enjoy your stay!\r\n"); // 372 RPL_MOTD
     sendToClient(fd, ":" + client->getuName() + RPL_ENDOFMOTD + client->getnName() + " :End of /MOTD command.\r\n"); // 376 RPL_ENDOFMOTD
 
+	sendToClient(fd, welcomeMessage);
 	client->setisCapNegotiated(true);
+	this->clientCount++;
 }
 
 
@@ -221,6 +253,13 @@ void Server::addClient() {
 
 	if (fcntl(clientfd, F_SETFL, O_NONBLOCK) == -1) //-> set the socket option (O_NONBLOCK) for non-blocking socket
 		{std::cout << "fcntl() failed" << std::endl; return;}
+	
+	// Check Maximum number of clients
+	if (clientCount >= 100) {
+		sendToClient(clientfd, ERR_UNAVAILRESOURCE ":Server is full, try again later.\r\n");
+		close(clientfd);
+		return;
+	}
 
 	NewPoll.fd = clientfd; //-> add the client socket to the pollfd
 	NewPoll.events = POLLIN; //-> set the event to POLLIN for reading data
@@ -259,8 +298,8 @@ void Server::addChannel(const std::string& chName, Client& cl) {
 
 
 	channels.push_back(ch);
-	// cl.addChannel(ch);
-	sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
+	// cl.addChannel(ch); //If commented, channel created is not having operator privileges. if uncommented, channel created is having operator privileges, but client cannot rejoin group after leaving(kicked out).
+	// sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + cl.getipAdd() + " JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), RPL_TOPIC + cl.getnName() + " " + chName + " :" + ch.getTopic() + "\r\n");
 	sendToClient(cl.getfd(), RPL_NAMREPLY + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
@@ -452,7 +491,7 @@ void Server::kickCMD(std::vector<std::string> line, Client* cl){
 	if (tmpch->checkclientExist(cl) && tmpch->checkclientOper(cl))  {
 		if (tmpch->checkclientExist(removeCl)){
 			tmpch->removeClient(removeCl);
-			sendToClient(removeCl->getfd(), "KICK " + removeCl->getnName() + " " + tmpch->getchannelName() + " :You have been kicked from the channel\r\n");
+			sendToClient(removeCl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + removeCl->getnName() + " :You have been kicked from the channel\r\n");
 			std::cout << "KICK message on channel " << tmpch->getchannelName() << " from " << cl->getuName() << " to remove " << removeCl->getuName() << " from channel" << std::endl;
 		}
 	} else {
@@ -521,12 +560,12 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() >= 2){
 		Channel* ch = getChannel(line[1]);
 		if (ch == NULL){
-			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + line[1] + " :No such channel\r\n");
+			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + line[1] + " :No such channel\r\n");
 			// sendToClient(cl->getfd(), cl->getuName() + " " + line[1] + " :No such channel\r\n");
 			return ;
 		}
 		if (line.size() == 2){
-			sendToClient(cl->getfd(), cl->getnName() + " " + RPL_CHANNELMODEIS + ch->getchannelName() + " +" + ch->getMode() + "\r\n");
+			sendToClient(cl->getfd(), RPL_CHANNELMODEIS + cl->getnName() + " " + ch->getchannelName() + " +" + ch->getMode() + "\r\n");
 			return ;
 		}
 		if (!ch->checkclientOper(cl)){
@@ -538,11 +577,11 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 		char c = '\0';
 		size_t param = 3;
 		if (modestring[0] == '\0') {
-			sendToClient(cl->getfd(), RPL_CHANNELMODEIS + ch->getchannelName() + " " + ch->getMode() + "\r\n");
+			sendToClient(cl->getfd(), RPL_CHANNELMODEIS + cl->getnName() + " " + ch->getchannelName() + " " + ch->getMode() + "\r\n");
 			return ;
 		}
 		if (modestring[0] != '+' && modestring[0] != '-'){
-			sendToClient(cl->getfd(), ERR_UNKNOWNMODE + ch->getchannelName() + " :Unknown MODE flag\r\n");
+			sendToClient(cl->getfd(), ERR_UNKNOWNMODE + line[2] + " :is unknown mode char to me\r\n");
 			return ;
 		}
 		for (size_t i = 0; modestring[i]; ++i){
@@ -702,6 +741,7 @@ void Server::quitCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() > 1) {
 		std::cout << "Quit message: " << line[1] << std::endl;
 	}
+	this->clientCount--;
 	eraseClient(cl);  // removes client from all its existing channels
 	removeClient(fd);
 	close(fd);
@@ -715,6 +755,18 @@ void Server::sendCapabilities(int fd) {
     serverCapabilities.push_back("CHANNEL_MODES");
 	serverCapabilities.push_back("multi-prefix");
 	serverCapabilities.push_back("server-time");
+
+	// Additional recommended capabilities
+	serverCapabilities.push_back("sasl");
+	serverCapabilities.push_back("account-notify");
+	serverCapabilities.push_back("away-notify");
+	serverCapabilities.push_back("extended-join");
+	serverCapabilities.push_back("invite-notify");
+	serverCapabilities.push_back("message-tags");
+	serverCapabilities.push_back("echo-message");
+	serverCapabilities.push_back("cap-notify");
+	serverCapabilities.push_back("batch");
+
 
     std::string capabilityList = "CAP * LS :";
     for (std::vector<std::string>::const_iterator it = serverCapabilities.begin(); it != serverCapabilities.end(); ++it) {
@@ -846,6 +898,9 @@ bool Server::isNickValid(const std::string& nick) {
 			return false;
 		}
     }
+	if (nick.size() >= MAX_NICK_LENGTH) {
+		return false;
+	}
 	return true;
 }
 
@@ -1059,7 +1114,7 @@ void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
 			}
 			
 		} else {
-			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + vec[1] + " : No such channel\r\n");
+			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + vec[1] + " : No such channel\r\n");
 			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
 			return ;
 		}
