@@ -44,8 +44,13 @@ Channel::Channel(const std::string& chName, Client& cl): channelName(chName){
 }
 
 void Channel::addClient(Client& client) {
-	client.addChannel(*this);
-	this->clientlist.push_back(client);
+	Client *cl = &client;
+	Channel ch = *this;
+	// client.addChannel(*this);
+	// this->clientlist.push_back(client);
+	cl->addChannel(ch);
+	this->clientlist.push_back(*cl);
+	// this->operlist.push_back(*cl);
 }
 
 std::string Channel::getchannelName() const {
@@ -79,9 +84,27 @@ int Channel::getclientSize(){
 	return this->clientlist.size();
 }
 
+std::string Channel::getMode(){
+	std::string mode = "";
+	if (getinvFlag())
+		mode += "i";
+	if (getkeyFlag())
+		mode += "k";
+	if (gettopicFlag())
+		mode += "t";
+	if (getclientFlag())
+		mode += "l";
+	return mode;
+}
+
 std::vector<class Client> Channel::getclientList(){
 	return this->clientlist;
 }
+
+std::vector<class Client>& Channel::getoperList(){
+	return this->operlist;
+}
+
 bool Channel::joinFlags() {
 	if (getinvFlag() || getkeyFlag() || getclientFlag())
 		return true;
@@ -104,6 +127,14 @@ bool Channel::checkclientOper(Client* cl) {
 	return false;
 }
 
+void Channel::removeclientOper(Client* cl) {
+	for (size_t i = 0; i < operlist.size(); ++i){
+		if (cl->getfd() == operlist[i].getfd()){
+			operlist.erase(operlist.begin() + i);
+		}
+	}
+}
+
 void Channel::removeClient(Client* cl){
 	for (size_t i = 0; i < clientlist.size(); ++i){
 		if (cl->getfd() == clientlist[i].getfd()){
@@ -116,4 +147,61 @@ void Channel::removeClient(Client* cl){
 		}
 	}
 	cl->removeChannel(*this);
+}
+
+std::string Channel::getTopic() const {
+	return this->topic;
+}
+
+void Channel::setTopic(const std::string& top) {
+	this->topic = top;
+}
+
+void Channel::setinvFlag(bool a){
+	this->invFlag = a;
+}
+
+void Channel::setkeyFlag(bool a){
+	this->keyFlag = a;
+}
+
+void Channel::settopicFlag(bool a){
+	this->topicFlag = a;
+}
+
+void Channel::setclientFlag(bool a){
+	this->clientFlag = a;
+}
+
+void Channel::setLimit(int i){
+	this->limit = i;
+}
+
+void Channel::setKey(std::string str){
+	this->key = str;
+}
+
+void Channel::setClientOper(Client* cl, char c){
+	if (cl == NULL){
+		std::cout << "Client doesnt exist" << std::endl;
+		return ;
+	}
+	if (c == '-'){
+		for (size_t i = 0; i < operlist.size(); ++i){
+			if (cl->getfd() == operlist[i].getfd()){
+				operlist.erase(operlist.begin() + i);
+			}
+		}
+	}
+	else if (c == '+'){
+		if (!checkclientOper(cl)){
+			operlist.push_back(*cl);
+		}
+	}
+}
+
+void Channel::displayoper(){
+	for(size_t i = 0; i < operlist.size(); ++i){
+		std::cout << operlist[i].getnName() << std::endl;
+	}
 }

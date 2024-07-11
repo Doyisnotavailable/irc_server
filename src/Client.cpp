@@ -9,7 +9,13 @@ Client::Client() {
 	this->operFlag = false;
 	this->nName = "";
 	this->uName = "";
+	this->servName = "";
+	this->realName = "";
 	this->ipAdd = "";
+	this->isCapNegotiated = false;
+	this->isPass = false;
+	this->isNick = false;
+	this->isRegistered = false;
 }
 
 Client::~Client() {
@@ -22,8 +28,14 @@ Client& Client::operator=(const Client& toasgn){
 		operFlag = toasgn.fd;
 		nName = toasgn.nName;
 		uName = toasgn.uName;
+		servName = toasgn.servName;
+		realName = toasgn.realName;
 		ipAdd = toasgn.ipAdd;
 		clientChannelList = toasgn.clientChannelList;
+		isCapNegotiated = toasgn.isCapNegotiated;
+		isPass = toasgn.isPass;
+		isNick = toasgn.isNick;
+		isRegistered = toasgn.isRegistered;
 	}
 	return *this;
 }
@@ -52,6 +64,30 @@ std::vector<class Channel> Client::getlist() const {
 	return this->clientChannelList;
 }
 
+bool Client::getisCapNegotiated() const {
+	return this->isCapNegotiated;
+}
+
+bool Client::getisPass() const {
+	return this->isPass;
+}
+
+bool Client::getisNick() const {
+	return this->isNick;
+}
+
+bool Client::getisRegistered() const {
+	return this->isRegistered;
+}
+
+// std::string Client::getservName() const {
+// 	return this->servName;
+// }
+
+// std::string Client::getrealName() const {
+// 	return this->realName;
+// }
+
 void Client::setfd(int fd) {
 	this->fd = fd;
 }
@@ -72,6 +108,30 @@ void Client::setipAdd(const std::string& str) {
 	this->ipAdd = str;
 }
 
+void Client::setisCapNegotiated(bool flag) {
+	this->isCapNegotiated = flag;
+}
+
+void Client::setisPass(bool flag) {
+	this->isPass = flag;
+}
+
+void Client::setisNick(bool flag) {
+	this->isNick = flag;
+}
+
+void Client::setisRegistered(bool flag) {
+	this->isRegistered = flag;
+}
+
+void Client::setservName(const std::string& str) {
+	this->servName = str;
+}
+
+void Client::setrealName(const std::string& str) {
+	this->realName = str;
+}
+
 void Client::addChannel(const Channel& ch) {
 	this->clientChannelList.push_back(ch);
 }
@@ -85,4 +145,8 @@ void Client::removeChannel(const Channel& ch){
 
 bool Client::operator==(const Client& tocheck) {
 	return this->getfd() == tocheck.getfd();
+}
+
+std::vector<class Channel> Client::getChannelList() const {
+	return this->clientChannelList;
 }

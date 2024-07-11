@@ -20,7 +20,7 @@ class Channel {
 		bool keyFlag; //flag for channel password
 		bool topicFlag; //flag for topic operator
 		bool clientFlag; // flag for user limit
-		int limit;
+		int	limit;
     public:
 		Channel();
 		// Channel(std::string line);
@@ -40,13 +40,29 @@ class Channel {
 		bool getclientFlag();
 		int getclientSize();
 		int getlimit();
+		std::string getMode();
 		std::vector<class Client> getclientList();
+		std::vector<class Client>& getoperList();
+
+		void setinvFlag(bool a);
+		void setkeyFlag(bool a);
+		void settopicFlag(bool a);
+		void setclientFlag(bool a);
+		void setClientOper(Client* cl, char c);
+		void setLimit(int i);
+		void setKey(std::string str);
 		// ------------------ //
 
 		bool checkclientExist(Client* cl);
 		bool checkclientOper(Client* cl);
 		bool joinFlags(); //function to check if any of a flag is true when joining
 		void removeClient(Client *cl);
+		std::string getTopic() const;
+		void setTopic(const std::string& top);
+		void removeclientOper(Client* cl);
+		void displayoper();
 };
+
+
 
 #endif
