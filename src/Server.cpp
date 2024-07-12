@@ -112,6 +112,8 @@ void Server::eraseClient(Client* cl) {
 			channels[i].removeClient(cl);
 			channels[i].removeclientOper(cl);
 		}
+		if (channels[i].getclientSize() == 0)
+			channels.erase(channels.begin() + i);
 	}
 }
 
@@ -504,21 +506,34 @@ void Server::joinPass(Channel* chName, const char* key, Client* cl){
 
 void Server::kickCMD(std::vector<std::string> line, Client *cl){
 	if (line.size() >= 3){
-		Channel* tmpch = getChannel(line[1]);
-		Client* removeCl = getClient(line[2]);
 
-		if (!tmpch)
-			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + line[1] + " :No such channel\r\n");
-		else if (!tmpch->checkclientExist(cl))
-			sendToClient(cl->getfd(), ERR_NOTONCHANNEL + cl->getnName() + " " + line[1] + " :You're not on that channel\r\n");
-		else if (!tmpch->checkclientOper(cl))
-			sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + line[1] + " :You're not channel operator\r\n");
-		else if (!removeCl || !tmpch->checkclientExist(removeCl))
-			sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + line[2] + " " + line[1] + " :They aren't on that channel\r\n");
-		else {
-			tmpch->removeClient(removeCl);
-			sendToClient(removeCl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + removeCl->getnName() + " :You have been kicked from the channel\r\n");
-			sendToChannel(*tmpch, "Command to kick " + removeCl->getnName() + " from " + line[1] + "\r\n");
+		// KICK #channelname clientnames :reason
+		for (size_t i = 1; i < line.size(); ++i){
+			if (line[i].empty()){
+				sendToClient(cl->getfd(), "KICK :Not enough parameters\r\n");
+				std::cout << "KICK command not enough param" << std::endl;
+				return ;
+			}
+			Channel* tmpch = getChannel(line[1]);
+			Client* removeCl = getClient(line[2]);
+
+			if (!tmpch)
+				sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + line[1] + " :No such channel\r\n");
+			else if (!tmpch->checkclientExist(cl))
+				sendToClient(cl->getfd(), ERR_NOTONCHANNEL + cl->getnName() + " " + line[1] + " :You're not on that channel\r\n");
+			else if (!tmpch->checkclientOper(cl))
+				sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + line[1] + " :You're not channel operator\r\n");
+			else if (!removeCl || !tmpch->checkclientExist(removeCl))
+				sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + line[2] + " " + line[1] + " :They aren't on that channel\r\n");
+			else {
+				sendToClient(removeCl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + removeCl->getnName() + " :You have been kicked from the channel\r\n");
+				tmpch->removeClient(removeCl);
+				sendToChannel(*tmpch, ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + removeCl->getnName() + " :Client has been kicked out channel\r\n");
+			}
+
+			// remove client to go to the next client
+			line.erase(line.begin() + 2);
+			std::cout << "line[2] = " << line[2] << std::endl;
 		}
 	}
 	else
@@ -739,6 +754,18 @@ void Server::quitCMD(std::vector<std::string> line, Client* cl){
 		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
 		std::cerr << "Client [" << fd << "] has not registered" << std::endl;
 		return ;
+	}
+
+	std::string quitMessage =  ":" + cl->getnName() + "!" + cl->getuName() + "@" + cl->getipAdd() + " PART " + " QUIT :QUIT :leaving\r\n";
+	// Send quit message to all channels client was in
+	std::vector<Channel> chList = channels;
+	for (size_t i = 0; i < chList.size(); ++i) {
+		// msg should be formated to return sth like this :mhaile!~mhaile@freenode-59e.p57.hdhqau.IP QUIT :Quit: leaving
+		// for (int j = 0; j < chList[i].getclientSize(); ++j) {
+		// 	sendToClient(chList[i].getclientList()[j].getfd(), quitMessage);
+		// }
+		sendToChannel(chList[i], ":" + cl->getnName() + " PART " + chList[i].getchannelName() + " " + cl->getnName() + " QUIT :QUIT :leaving\r\n");
+		// sendToChannel(chList[i], quitMessage);
 	}
 	std::cout << "Client " << cl->getnName() << " has quit" << std::endl;
 	if (line.size() > 1) {
@@ -1099,7 +1126,7 @@ void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
 			// if client a channel operator
 			if (!tmpch->checkclientOper(cl)) {
 				// check channel flag for topic
-				if (tmpch->gettopicFlag() == false) {
+				if (tmpch->gettopicFlag() == true) {
 					sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + tmpch->getchannelName() + " :You're not channel operator\r\n");
 					std::cerr << "Client is not a channel operator for client [" << cl->getfd() << "]" << std::endl;
 					return ;
@@ -1113,7 +1140,7 @@ void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
 
 			tmpch->setTopic(newTopic);
 			for (size_t i = 0; i < tmpch->getclientList().size(); i++) {
-				sendToClient(tmpch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + tmpch->getchannelName() + " :" + newTopic + "\r\n");
+				sendToClient(tmpch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + tmpch->getchannelName() + " " + newTopic + "\r\n");
 			}
 			
 		} else {

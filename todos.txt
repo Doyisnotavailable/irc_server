@@ -37,3 +37,13 @@ Ports - virtual places within an operating system where network connections star
 • Ports starting from 0 to 1023 can or cannot be used. HTTP, FTP are inside this scope. Using this scope requires admin priv to use.
 • 1024 to 49151 can be registered for specific purposes and are used by non-standard applications and services.
 • 49152 to 65535 used by client applications for outgoing connections.
+
+
+22:19 -!- Irssi: (default) critical nicklist_set_host: assertion 'host != NULL' failed
+22:19 -!- Irssi: (default) critical nicklist_set_host: assertion 'host != NULL' failed
+22:19 -!- Irssi: (default) critical nicklist_set_host: assertion 'host != NULL' failed
+
+
+name update RPL_  PS. REMOVE @ for non operators
+kick updated message/reason for kicking
+sendToChannel(*ch, ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");
