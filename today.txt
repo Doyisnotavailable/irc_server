@@ -1,0 +1,8 @@
+change ports 65535
+kick command reasons for kick
+topic command not showing up on join
+join should send a message to everyone that a client has joined
+invcmd message for accepting clients
+
+
+and check all commands with RPL and ERR
