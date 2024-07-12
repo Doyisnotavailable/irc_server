@@ -181,6 +181,20 @@ void Channel::setKey(std::string str){
 	this->key = str;
 }
 
+void Channel::settopicFlag(char c){
+	if (c == '-'){
+		this->topicFlag = false; return;
+	}
+	this->topicFlag = true;
+}
+
+void Channel::setinvFlag(char c){
+	if (c == '-'){
+		this->invFlag = false; return;
+	}
+	this->invFlag = true;
+}
+
 void Channel::setClientOper(Client* cl, char c){
 	if (cl == NULL){
 		std::cout << "Client doesnt exist" << std::endl;
