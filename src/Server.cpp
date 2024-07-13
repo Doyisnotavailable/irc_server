@@ -626,9 +626,10 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						break ;
 						// ch->settopicFlag(c); break;
 					case 'i':
-						if (ch->setinvFlag(c))
+						if (ch->setinvFlag(c)) {
 							sendToChannel(*ch, ":" + cl->getnName() + " INVITE " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");
 							ch->setinvFlag(c);
+						}
 						break ;
 						// ch->setinvFlag(c); break;
 					case 'k':
@@ -742,20 +743,25 @@ void Server::quitCMD(std::vector<std::string> line, Client* cl){
 		return ;
 	}
 
-	std::string quitMessage =  ":" + cl->getnName() + "!" + cl->getuName() + "@" + cl->getipAdd() + " PART " + " QUIT :QUIT :leaving\r\n";
+	// quit message from client
+	std::string quitMessage;
+	for (size_t i = 1; i < line.size(); ++i) {
+		quitMessage += line[i];
+		if (i < line.size() - 1)
+			quitMessage += " ";
+	}
+
 	// Send quit message to all channels client was in
 	std::vector<Channel> chList = channels;
 	for (size_t i = 0; i < chList.size(); ++i) {
-		// msg should be formated to return sth like this :mhaile!~mhaile@freenode-59e.p57.hdhqau.IP QUIT :Quit: leaving
-		// for (int j = 0; j < chList[i].getclientSize(); ++j) {
-		// 	sendToClient(chList[i].getclientList()[j].getfd(), quitMessage);
-		// }
-		sendToChannel(chList[i], ":" + cl->getnName() + " PART " + chList[i].getchannelName() + " " + cl->getnName() + " QUIT :QUIT :leaving\r\n");
-		// sendToChannel(chList[i], quitMessage);
+		if (chList[i].checkclientExist(cl))
+			// sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
+			// sendToChannel(chList[i], ":" + cl->getnName() + " PART " + chList[i].getchannelName() + " " + cl->getnName() + " :" + quitMessage + "\r\n");
+			sendToChannel(chList[i], ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " PART :" + chList[i].getchannelName() + "\r\n");
 	}
 	std::cout << "Client " << cl->getnName() << " has quit" << std::endl;
 	if (line.size() > 1) {
-		std::cout << "Quit message: " << line[1] << std::endl;
+		std::cout << "Quit message: " << quitMessage << std::endl;
 	}
 	this->clientCount--;
 	eraseClient(cl);  // removes client from all its existing channels
@@ -773,15 +779,15 @@ void Server::sendCapabilities(int fd) {
 	serverCapabilities.push_back("server-time");
 
 	// Additional recommended capabilities
-	serverCapabilities.push_back("sasl");
-	serverCapabilities.push_back("account-notify");
-	serverCapabilities.push_back("away-notify");
-	serverCapabilities.push_back("extended-join");
-	serverCapabilities.push_back("invite-notify");
-	serverCapabilities.push_back("message-tags");
-	serverCapabilities.push_back("echo-message");
-	serverCapabilities.push_back("cap-notify");
-	serverCapabilities.push_back("batch");
+	// serverCapabilities.push_back("sasl");
+	// serverCapabilities.push_back("account-notify");
+	// serverCapabilities.push_back("away-notify");
+	// serverCapabilities.push_back("extended-join");
+	// serverCapabilities.push_back("invite-notify");
+	// serverCapabilities.push_back("message-tags");
+	// serverCapabilities.push_back("echo-message");
+	// serverCapabilities.push_back("cap-notify");
+	// serverCapabilities.push_back("batch");
 
 
     std::string capabilityList = "CAP * LS :";
@@ -816,14 +822,9 @@ void Server::clAuthentication(int fd, std::vector<std::string>& vec) {
 		return ;
 	}
 
-	// if (vec[0] ==  "CAP" && vec[1] == "END")
-	// 	isCap = true;
-	
 	for (size_t i = 0; i < vec.size(); i++) {
-		if (vec[0] ==  "CAP") {
+		if (vec[0] ==  "CAP")
 			isCap = true;
-			// std::cout << "CAP END received from client [" << fd << "]" << std::endl;
-		}
 		if (vec[0] == "PASS" || vec[0] == "pass")
 			passCMD(fd, vec, isCap);
 		else if (vec[0] == "NICK" || vec[0] == "nick") 
@@ -865,7 +866,6 @@ void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
 
 // Handle the PASS command from the client. Remove the client if the password is incorrect.
 void Server::passCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
-	// (void)isCap;
 	if (getClientByFd(fd)->getisPass() == true) {
 		sendToClient(fd, ERR_ALREADYREGISTRED " * :You may not reregister\r\n");
 		std::cerr << "Client [" << fd << "] may not reregister" << std::endl;
@@ -899,24 +899,19 @@ void Server::passCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
 }
 
 
-bool Server::isNickValid(const std::string& nick) {
-	if (nick.empty() || nick[0] == '\0') { // check if the nickname is empty
+bool Server::isNickValid(const std::string& nick) { // May want to make nickname limit for 9 chars
+	if (nick.empty() || nick[0] == '\0') // check if the nickname is empty
 		return false;
-	}
-	if (nick.length() > 30) { // check if the nickname is too long. The maximum length is 30 characters(There is no official limit, used for testing purposes).
+	if (nick.length() > 30) // check if the nickname is too long. The maximum length is 30 characters(There is no official limit, used for testing purposes).
 		return false;
-	}
-	if (nick[0] == '#' || isdigit(nick[0]) || nick[0] == ':') { // check if the nickname starts with a disallowed character (: is OK with irssi)
+	if (nick[0] == '#' || isdigit(nick[0]) || nick[0] == ':') // check if the nickname starts with a disallowed character (: is OK with irssi)
 		return false;
-	}
 	for (size_t i = 0; i < nick.length(); i++) {
-        if (!isalnum(nick[i]) && !strchr("[]{}\\|-_", nick[i])) { // check if the nickname contains disallowed characters
+        if (!isalnum(nick[i]) && !strchr("[]{}\\|-_", nick[i]))  // check if the nickname contains disallowed characters PS. NEED TO ADD MORE DISALLOWED CHARACTERS
 			return false;
-		}
     }
-	if (nick.size() >= MAX_NICK_LENGTH) {
+	if (nick.size() >= MAX_NICK_LENGTH)
 		return false;
-	}
 	return true;
 }
 
