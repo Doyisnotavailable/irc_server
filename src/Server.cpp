@@ -396,7 +396,7 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 			Channel *tmpch = getChannel(chName);
 			//check flags if its possible to join
 			if (tmpch->checkclientExist(cl)){
-				std::cout << "Client already at channel" << std::endl;
+				std::cout << "Client already at channel" << std::endl; //to change
 				return ;
 			}
 			if (!tmpch->joinFlags()) {
@@ -626,13 +626,13 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 						break ;
 						// ch->settopicFlag(c); break;
 					case 'i':
-						if (c == '-' && ch->getMode().find('i') != std::string::npos) {
+						if (ch->setinvFlag(c))
 							sendToChannel(*ch, ":" + cl->getnName() + " INVITE " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");
 							ch->setinvFlag(c);
-						}
+						break ;
 						// ch->setinvFlag(c); break;
 					case 'k':
-						if (c == '-'){ch->setkeyFlag(false);break;}
+						if (c == '-' && ch->getkeyFlag()){ch->setkeyFlag(false);break;}
 						if (param >= line.size()) break;
 						setChannelKey(ch, cl, line[param]); param++; break;
 					case 'o':
@@ -667,32 +667,19 @@ void Server::inviteCMD(std::vector<std::string> line, Client* cl){
 			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + tmpch->getchannelName() + "\r\n");
 			return;
 		}
-		if (!tmp)
+		if (!tmp){
+			sendToClient(cl->getfd(), ERR_NOSUCHNICK  ":No such nick/channel\r\n");
 			return ;
+		}
 		if (tmpch->checkclientExist(cl) && tmpch->checkclientOper(cl)){
 			if (tmpch->checkclientExist(tmp)){
 				sendToClient(cl->getfd(), ERR_USERONCHANNEL + cl->getnName() + " " + tmp->getnName() + " " + tmpch->getchannelName() + " :is already on channel\r\n");
 				return ;
 			}
 			else {
-				tmpch->addClient(*cl);
-				sendToClient(tmp->getfd(), ":" + tmp->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-				sendToClient(tmp->getfd(), RPL_TOPIC + tmp->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
-				
-				std::vector<class Client> tmplist = tmpch->getclientList();
-				
-				std::string clientListStr;
-				for (size_t i = 0; i < tmplist.size(); ++i) {
-					if (i > 0) {
-						clientListStr += " ";
-					}
-					clientListStr += "@" + tmplist[i].getnName();
-				}
-				//message for success invite
-				sendToClient(cl->getfd(), RPL_INVITING + tmp->getnName() + " " + tmp->getnName() + " " + tmpch->getchannelName() + "\r\n");
-
-				sendToClient(tmp->getfd(), RPL_NAMREPLY + tmp->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
-				sendToClient(tmp->getfd(), RPL_ENDOFNAMES + tmp->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
+				//Client should be invited not joined, have to add channel to the clients invited list so it could bypass keys and such in
+				tmpch->invClient(tmp);
+				sendToClient(tmp->getfd(), ":" + cl->getnName() + "!" + cl->getipAdd() + " INVITE " + tmp->getnName() + " " + tmpch->getchannelName() + "\r\n");
 			}
 		}
 	} else

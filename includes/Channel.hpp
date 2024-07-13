@@ -14,6 +14,7 @@ class Channel {
 		std::string channelName;
 		std::vector<class Client> clientlist;
 		std::vector<class Client> operlist;
+		std::vector<class Client> invlist;
 		std::string key;
 		std::string topic;
 		bool invFlag; //flag for invite only channel
@@ -51,12 +52,14 @@ class Channel {
 		void setClientOper(Client* cl, char c);
 		void setLimit(int i);
 		void setKey(std::string str);
-		void setinvFlag(char c);
+		bool setinvFlag(char c);
 		bool settopicFlag(char c);
 		// ------------------ //
 
+		void invClient(Client *cl);
 		bool checkclientExist(Client* cl);
 		bool checkclientOper(Client* cl);
+		bool checkinvClient(Client* cl);
 		bool joinFlags(); //function to check if any of a flag is true when joining
 		void removeClient(Client *cl);
 		std::string getTopic() const;

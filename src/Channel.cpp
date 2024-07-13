@@ -190,11 +190,13 @@ bool Channel::settopicFlag(char c){
 	return false;
 }
 
-void Channel::setinvFlag(char c){
-	if (c == '-'){
-		this->invFlag = false; return;
+bool Channel::setinvFlag(char c){
+	if (c == '-' && this->getinvFlag()){
+		this->invFlag = false; return true;
+	} else if (c == '+' && !this->getinvFlag()){
+		this->invFlag = true; return true;
 	}
-	this->invFlag = true;
+	return false;
 }
 
 void Channel::setClientOper(Client* cl, char c){
@@ -220,4 +222,16 @@ void Channel::displayoper(){
 	for(size_t i = 0; i < operlist.size(); ++i){
 		std::cout << operlist[i].getnName() << std::endl;
 	}
+}
+
+void Channel::invClient(Client *cl){
+	this->invlist.push_back(*cl);
+}
+
+bool Channel::checkinvClient(Client *cl){
+	for(size_t i = 0; i < invlist.size(); ++i){
+		if (cl->getfd() == invlist[i].getfd())
+			return true;
+	}
+	return false;
 }

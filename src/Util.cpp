@@ -46,7 +46,7 @@ bool checkpass(std::string& str){
 		return false;
 	for (size_t i = 0; i < str.size(); ++i){
 		char c = str[i];
-		if (!std::isalnum(c) || !std::ispunct(c))
+		if (!std::isalnum(c) && !std::ispunct(c))
 			return false ;
 	}
 	return true;
