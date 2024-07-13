@@ -1,7 +1,7 @@
-change ports 65535
+change ports 65535 :DONE
 kick command reasons for kick
-topic command not showing up on join
-join should send a message to everyone that a client has joined
+topic command not showing up on join :DONE
+join should send a message to everyone that a client has joined :DONE
 invcmd message for accepting clients
 
 

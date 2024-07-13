@@ -44,6 +44,6 @@ Ports - virtual places within an operating system where network connections star
 22:19 -!- Irssi: (default) critical nicklist_set_host: assertion 'host != NULL' failed
 
 
-name update RPL_  PS. REMOVE @ for non operators
+name update RPL_  PS. REMOVE @ for non operators: DONE
 kick updated message/reason for kicking
 sendToChannel(*ch, ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");

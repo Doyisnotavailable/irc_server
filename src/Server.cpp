@@ -411,11 +411,20 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 					if (i > 0) {
 						clientListStr += " ";
 					}
-					clientListStr += "@" + tmplist[i].getnName();
+					// Set @ for operator
+					if (tmpch->checkclientOper(&tmplist[i]))
+						clientListStr += "@";
+					clientListStr += tmplist[i].getnName();
 				}
 
 				sendToClient(cl->getfd(), RPL_NAMREPLY + cl->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
 				sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
+
+				// Broadcast to all clients in the channel
+				for (size_t i = 0; i < tmplist.size(); ++i) {
+					if (tmplist[i].getfd() != cl->getfd())
+						sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
+				}
 				std::cout << "client joined" << std::endl;
 			}
 
@@ -630,9 +639,16 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 			else {
 				switch(modestring[i]){
 					case 't':
-						ch->settopicFlag(c); break;
+						if (ch->settopicFlag(c))
+							sendToChannel(*ch,RPL_CHANNELMODEIS + cl->getnName() + " " + ch->getchannelName() + " +" + ch->getMode() + "\r\n");
+						break ;
+						// ch->settopicFlag(c); break;
 					case 'i':
-						ch->setinvFlag(c); break;
+						if (c == '-' && ch->getMode().find('i') != std::string::npos) {
+							sendToChannel(*ch, ":" + cl->getnName() + " INVITE " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");
+							ch->setinvFlag(c);
+						}
+						// ch->setinvFlag(c); break;
 					case 'k':
 						if (c == '-'){ch->setkeyFlag(false);break;}
 						if (param >= line.size()) break;
@@ -651,7 +667,8 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 				}
 			}
 		}
-		sendToChannel(*ch, ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");	
+		// sendToClient(cl->getfd(), RPL_CHANNELMODEIS + cl->getnName() + " " + ch->getchannelName() + " +" + ch->getMode() + "\r\n");
+		// sendToChannel(*ch, ":" + cl->getnName() + " TOPIC " + ch->getchannelName() + " :" + ch->getMode() + "\r\n");
 	}
 	else {
 		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS " * MODE :Not enough parameters\r\n");
@@ -975,12 +992,27 @@ void Server::nickCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
 			return ;
 		}
 	}
+	// send new client nick name to client
+	if (client->getisNick() == true) {
+		sendToClient(fd, ":" + client->getnName() + "!" + client->getuName() + "@" + client->getipAdd() + " NICK :" + vec[1] + "\r\n");
+
+		// Broadcast to channels that client has updated thier nick name
+		std::vector<Channel> chList = channels;
+		for (size_t i = 0; i < chList.size(); ++i) {
+			if (chList[i].checkclientExist(client)) {
+				for (int j = 0; j < chList[i].getclientSize(); ++j) {
+					if (chList[i].getclientList()[j].getfd() != fd)
+						sendToClient(chList[i].getclientList()[j].getfd(), ":" + client->getnName() + " NICK :" + vec[1] + "\r\n");
+				}
+			}
+		}
+
+	}
+
 	std::string oldNick = client->getnName();
 	client->setnName(vec[1]);
 	client->setisNick(true);
-	// client->setisCapNegotiated(true);
-	// sendToClient(fd, oldNick + "changed thier nickname to " + vec[1] + "\r\n");
-	// sendToClient(fd, ":" + oldNick + "!" + getClientByFd(fd)->getuName() + "@" + getClientByFd(fd)->getipAdd() + " NICK " + vec[1] + "\n");
+
 	std::cout << "Nickname set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
 }
 
