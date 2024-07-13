@@ -62,7 +62,7 @@ int parse_port(const char *str) {
         return -1;  /* Invalid input */
     }
 
-    if (port < 1024 || port > 49151) {      // 65535 may want to change this as the upper limit
+    if (port < 1024 || port > 65535) {      // 65535 may want to change this as the upper limit
         return -1;  /* Out of valid range */
     }
 

@@ -181,11 +181,13 @@ void Channel::setKey(std::string str){
 	this->key = str;
 }
 
-void Channel::settopicFlag(char c){
-	if (c == '-'){
-		this->topicFlag = false; return;
+bool Channel::settopicFlag(char c){
+	if (c == '-' && this->gettopicFlag()){
+		this->topicFlag = false; return true;
+	} else if (c == '+' && !this->gettopicFlag()){
+		this->topicFlag = true; return true;
 	}
-	this->topicFlag = true;
+	return false;
 }
 
 void Channel::setinvFlag(char c){
