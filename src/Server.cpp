@@ -403,63 +403,50 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 		if (isChannel(chName)) {
 			Channel *tmpch = getChannel(chName);
 			//check flags if its possible to join
+			if (!tmpch){addChannel(chName, cl); return;}
 			if (tmpch->checkclientExist(cl)){
 				std::cout << "Client already at channel" << std::endl; //to change
 				return ;
 			}
-			if (!tmpch->joinFlags()) {
-				tmpch->addClient(*cl);
-				sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-				sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
-				
-				std::vector<class Client> tmplist = tmpch->getclientList();
-				
-				std::string clientListStr;
-				for (size_t i = 0; i < tmplist.size(); ++i) {
-					if (i > 0) {
-						clientListStr += " ";
-					}
-					// Set @ for operator
-					if (tmpch->checkclientOper(&tmplist[i]))
-						clientListStr += "@";
-					clientListStr += tmplist[i].getnName();
-				}
+			if (!tmpch->joinFlags()){addclienttoChannel(tmpch, cl); return;}
+			if ((tmpch->getclientFlag() && tmpch->getclientSize() < tmpch->getlimit()) || !tmpch->getclientFlag()){
+				if (tmpch->getinvFlag() && tmpch->checkinvClient(cl)){
+					addclienttoChannel(tmpch, cl); tmpch->removeInvite(cl);
+				} else if (tmpch->getinvFlag() && !tmpch->checkinvClient())
+					sendToClient(cl->getfd(), ERR_INVITEONLYCHAN + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+i)\r\n");
+				else if (tmpch->getkeyFlag() && key)
+					joinPass(tmpch, key, cl);
+				else if (tmpch->getkeyFlag() && !key)
+					sendToClient(cl->getfd(), ERR_BADCHANNELKEY + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+k)\r\n");
 
-				sendToClient(cl->getfd(), RPL_NAMREPLY + cl->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
-				sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
-
-				// Broadcast to all clients in the channel
-				for (size_t i = 0; i < tmplist.size(); ++i) {
-					if (tmplist[i].getfd() != cl->getfd())
-						sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-				}
-				std::cout << "client joined" << std::endl;
-			}
-
-			else if (tmpch->getinvFlag() == true) {
-				sendToClient(cl->getfd(), ERR_INVITEONLYCHAN + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+i)\r\n");
-				std::cout << "Invite only channel client cant join" << std::endl;
-			}
-			else if (tmpch->getkeyFlag() == true && key == NULL) {
-				sendToClient(cl->getfd(), ERR_BADCHANNELKEY + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+k)\r\n");
-				std::cout << "Channel requires key to join" << std::endl;
-			}
-			else if (tmpch->getkeyFlag() == true && key != NULL) {
-				joinPass(tmpch, key, cl);
-			} else if (tmpch->getclientFlag() == true && tmpch->getlimit() <= tmpch->getclientSize()) {
-				sendToClient(cl->getfd(), ERR_CHANNELISFULL + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+l)\r\n");
-				std::cout << "Client limit in the channel already reached" << std::endl;
-			} else if (tmpch->getclientFlag() == true && tmpch->getlimit() > tmpch->getclientSize()){
-				tmpch->addClient(*cl);
-				sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-				sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");
-			}
 			} else
-				addChannel(chName, *cl); //creates channel if it doesnt exist
+				sendToClient(cl->getfd(), ERR_CHANNELISFULL + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+l)\r\n");
+			}
 	} else {
 		sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + chName + " :No such channel\r\n");
 		std::cout << "Invalid channel name" << std::endl;
 	}
+}
+
+void Server::addclienttoChannel(Channel* chName, Client* cl){
+	sendToChannel(chName, ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
+	tmpch->addClient(*cl);
+
+	sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
+	sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");	
+	std::vector<class Client> tmplist = tmpch->getclientList();			
+	std::string clientListStr;
+	for (size_t i = 0; i < tmplist.size(); ++i) {
+		if (i > 0)
+		clientListStr += " ";
+		// Set @ for operator
+		if (tmpch->checkclientOper(&tmplist[i]))
+			clientListStr += "@";
+		clientListStr += tmplist[i].getnName();
+	}
+	sendToClient(cl->getfd(), RPL_NAMREPLY + cl->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
+	sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
+	std::cout << "client joined" << std::endl;
 }
 
 void Server::joinPass(Channel* chName, const char* key, Client* cl){

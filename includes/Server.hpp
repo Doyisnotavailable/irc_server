@@ -69,7 +69,7 @@ class Server {
 		int checkReceived(std::string str, Client* cl);
 		bool isChannel(const std::string& chname);
 
-        void addClienttoChannel(Channel* chName, Client* cl);
+        void addclienttoChannel(Channel* chName, Client* cl);
 		int setChannelLimit(Channel* chName, Client* cl, std::string str);
 		void setChannelKey(Channel* chName, Client* cl, std::string str);
 		// commands

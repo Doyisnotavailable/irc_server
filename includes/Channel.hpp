@@ -57,6 +57,9 @@ class Channel {
 		// ------------------ //
 
 		void invClient(Client *cl);
+		bool checkinvClient(Client *cl);
+		void cleaninvList(); //used to clean invlist when changing flags
+		void removeInvite(Client *cl);
 		bool checkclientExist(Client* cl);
 		bool checkclientOper(Client* cl);
 		bool checkinvClient(Client* cl);
@@ -67,7 +70,5 @@ class Channel {
 		void removeclientOper(Client* cl);
 		void displayoper();
 };
-
-
 
 #endif

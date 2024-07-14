@@ -225,13 +225,27 @@ void Channel::displayoper(){
 }
 
 void Channel::invClient(Client *cl){
-	this->invlist.push_back(*cl);
+	if (!checkinvClient(cl))
+		this->invlist.push_back(*cl);
 }
 
 bool Channel::checkinvClient(Client *cl){
-	for(size_t i = 0; i < invlist.size(); ++i){
-		if (cl->getfd() == invlist[i].getfd())
+	for(size_t i = 0; i < this->invlist.size(); ++i){
+		if (this->invlist[i].getnName() == cl->getnName())
 			return true;
 	}
 	return false;
+}
+
+void Channel::cleaninvList(){
+	for(size_t i = 0; i < this->invlist.size(); ++i){
+		this->invlist.erase(this->invlist.begin() + i);
+	}
+}
+
+void Channel::removeInvite(Client* cl){
+	for(size_t i = 0; i < this->invlist.size(); ++i){
+		if (this->invlist[i].getnName() == cl->getnName())
+			this->invlist.erase(this->invlist.begin() + i);
+	}
 }
