@@ -34,7 +34,7 @@ Server::Server(std::string port, std::string pass) {
 		throw InvalidPassword();
 	// int a = 6667;
 	// int a = 6667;
-	std::cout << a << std::endl;
+	// std::cout << a << std::endl;
     // if (a < 0 || a > 65535) {
 	// 	std::cout << "invalid port cout" << std::endl;
 	// 	throw InvalidPort();
@@ -88,6 +88,11 @@ void Server::initserverSock() {
 
 void Server::startServer() {
     std::cout << "Starting Server" << std::endl;
+	char hostname [256];
+	if (gethostname(hostname, sizeof(hostname)) != 0)
+        throw std::runtime_error("Error: Hostname resolution failed");
+	this->hostname = hostname;
+	std::cout << "Server listening on host ip: " << hostname << " port: " << this->port << std::endl;
 
 	std::signal(SIGINT, sigHandler);
     while (::stopflag == false) {
@@ -104,6 +109,7 @@ void Server::startServer() {
         }   
     }
 }
+
 
 void Server::eraseClient(Client* cl) {
 	// Erase client from all channels
@@ -222,6 +228,8 @@ int Server::checkReceived(std::string str, Client* cl) {
 		return 1;
 	if (line[0] == "JOIN")
 		joinCMD(line, cl);
+	else if (line[0] == "PART")
+		partCMD(line, cl);
 	else if (line[0] == "KICK")
 		kickCMD(line, cl);
 	else if (line[0] == "TOPIC")
@@ -482,6 +490,57 @@ void Server::joinPass(Channel* chName, const char* key, Client* cl){
 	}
 }
 
+void Server::partCMD(std::vector<std::string> line, Client* cl){
+	if (line.size() > 1){
+		std::vector<std::string> chname = ::split(line[1], ',');
+
+		// Reason for leaving channel
+		std::string reason;
+		for (size_t i = 2; i < line.size(); ++i){
+			if (i > 2)
+				reason += " ";
+			reason += line[i];
+		}
+		if (reason.empty())
+			reason = " :Leaving channel\r\n";
+		else
+			reason = " :" + reason + "\r\n";
+
+		for (size_t i = 0; i < chname.size(); ++i){
+			Channel* tmpch = getChannel(chname[i]);
+			if (!tmpch){
+				sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + chname[i] + " :No such channel\r\n");
+				continue;
+			}
+			if (!tmpch->checkclientExist(cl)){
+				sendToClient(cl->getfd(), ERR_NOTONCHANNEL + cl->getnName() + " " + chname[i] + " :You're not on that channel\r\n");
+				continue;
+			}
+
+			// Remove client from channel
+			eraseClient(cl);
+			tmpch->removeClient(cl);
+			sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " PART " + tmpch->getchannelName() + reason);
+
+			// Broadcast to all clients in the channel
+			std::vector<class Client> tmplist = tmpch->getclientList();
+			for (size_t i = 0; i < tmplist.size(); ++i){
+				if (tmplist[i].getfd() != cl->getfd())
+					sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " PART " + tmpch->getchannelName() + reason);
+			}
+			// Delete channel if no clients are in it
+			if (tmpch->getclientSize() == 0) {
+				for (size_t i = 0; i < channels.size(); ++i) {
+					if (channels[i].getchannelName() == tmpch->getchannelName())
+						channels.erase(channels.begin() + i);
+				}
+			}
+		}
+	}
+	else
+		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS + cl->getnName() + " PART :Not enough parameters\r\n");
+}
+
 void Server::kickCMD(std::vector<std::string> line, Client *cl){
 	if (line.size() > 2){
 		std::string reason = " :Client has been kicked out of the channel\r\n";
@@ -512,17 +571,24 @@ void Server::kickCMD(std::vector<std::string> line, Client *cl){
 					continue;
 				}
 				// if (tmpcl){
-					tmpch->removeClient(tmpcl);
-					if (reason.empty()){
-						sendToClient(tmpcl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + " :You have been kicked from the channel\r\n");
-						sendToChannel(*tmpch, ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + reason);
-					}
-					else{
-						sendToClient(tmpcl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + " " + reason.c_str());
-						sendToChannel(*tmpch, ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + " " + reason.c_str());
-					}
+				eraseClient(tmpcl);
+				tmpch->removeClient(tmpcl);
+				if (reason.empty()){
+					sendToClient(tmpcl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + " :You have been kicked from the channel\r\n");
+					sendToChannel(*tmpch, ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + reason);
+				}
+				else{
+					sendToClient(tmpcl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + " " + reason.c_str());
+					sendToChannel(*tmpch, ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + " " + reason.c_str());
+				}
 				// }
-					
+				// Delete channel if no clients are in it
+				if (tmpch->getclientSize() == 0) {
+					for (size_t i = 0; i < channels.size(); ++i) {
+						if (channels[i].getchannelName() == tmpch->getchannelName())
+							channels.erase(channels.begin() + i);
+					}
+				}
 			}
 		}
 	}

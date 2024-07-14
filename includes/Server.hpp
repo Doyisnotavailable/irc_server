@@ -34,6 +34,7 @@ class Server {
     private:
         std::string pass; // pass needed to connect to the server
         int port;
+        std::string hostname;
         int serverfd;
         int stopflag;
         std::vector<class Client> clients;  // all of  the clients in server
@@ -84,6 +85,7 @@ class Server {
         void modeCMD(std::vector<std::string> line, Client *cl);
         void pingCMD(std::vector<std::string> line, Client* cl);
         void quitCMD(std::vector<std::string> line, Client* cl);
+        void partCMD(std::vector<std::string> line, Client* cl);
 		void inviteCMD(std::vector<std::string> line, Client* cl);
         // tester utils
 		void displayChannel();
