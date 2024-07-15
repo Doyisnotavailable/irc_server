@@ -98,7 +98,6 @@ void Server::startServer() {
     while (::stopflag == false) {
         if (poll(&pollfds[0], pollfds.size(), -1) == -1 && stopflag == true)
             throw::InvalidInput();
-		usleep(20);
         for (size_t i = 0; i < pollfds.size(); i++) {
             if (pollfds[i].revents && POLLIN && !stopflag) {
                 if (pollfds[i].fd == serverfd)
@@ -128,9 +127,10 @@ void Server::receive(int fd) {
 	char str[512];
 	memset(str, 0, sizeof(str));
 
-	size_t size = recv(fd, str, sizeof(str) - 1, 0);
-	// std::cout << "size = " << size << std::endl << std::endl;
+	ssize_t size = recv(fd, str, sizeof(str) - 1, 0);
 
+	std::cout << "Size is = " << size << std::endl;
+	std::cout << "Str len = " << strlen(str) << std::endl;
 	// Parse for maximum size of message
 	if (size > 510) {
 		Client *cl = getClient(fd);
@@ -140,10 +140,8 @@ void Server::receive(int fd) {
 		// std::cout << "############## Input line was too long" << std::endl;
 		return ;
 	}
-
 	if (size <= 0) {
 		std::cout << "Client " << this->getClient(fd)->getfd() << " disconnected" << std::endl;
-
 		Client *cl = getClient(fd);
 		if (cl) {
 			eraseClient(cl);
@@ -153,7 +151,6 @@ void Server::receive(int fd) {
 	} else {
 		// str[size] = '\0';  ######################## THIS NEEDS REVIWING ########################## (commented to resolve a sigfault case when client send /disconnect cmd from irssi)
 		std::string line = str;
-
 		std::vector<std::string> vec = splitCmd(str);
 
 		// std::cout << *vec.begin() << std::endl;
@@ -403,7 +400,7 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 		if (isChannel(chName)) {
 			Channel *tmpch = getChannel(chName);
 			//check flags if its possible to join
-			if (!tmpch){addChannel(chName, cl); return;}
+			if (!tmpch){addChannel(chName, *cl); return;}
 			if (tmpch->checkclientExist(cl)){
 				std::cout << "Client already at channel" << std::endl; //to change
 				return ;
@@ -411,8 +408,9 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 			if (!tmpch->joinFlags()){addclienttoChannel(tmpch, cl); return;}
 			if ((tmpch->getclientFlag() && tmpch->getclientSize() < tmpch->getlimit()) || !tmpch->getclientFlag()){
 				if (tmpch->getinvFlag() && tmpch->checkinvClient(cl)){
-					addclienttoChannel(tmpch, cl); tmpch->removeInvite(cl);
-				} else if (tmpch->getinvFlag() && !tmpch->checkinvClient())
+					addclienttoChannel(tmpch, cl);
+					tmpch->removeInvite(cl);
+				} else if (tmpch->getinvFlag() && !tmpch->checkinvClient(cl))
 					sendToClient(cl->getfd(), ERR_INVITEONLYCHAN + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+i)\r\n");
 				else if (tmpch->getkeyFlag() && key)
 					joinPass(tmpch, key, cl);
@@ -429,23 +427,23 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 }
 
 void Server::addclienttoChannel(Channel* chName, Client* cl){
-	sendToChannel(chName, ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-	tmpch->addClient(*cl);
+	sendToChannel(*chName, ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + chName->getchannelName() + "\r\n");
+	chName->addClient(*cl);
 
-	sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
-	sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + tmpch->getchannelName() + " :" + tmpch->getTopic() + "\r\n");	
-	std::vector<class Client> tmplist = tmpch->getclientList();			
+	sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + chName->getchannelName() + "\r\n");
+	sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + chName->getchannelName() + " :" + chName->getTopic() + "\r\n");	
+	std::vector<class Client> tmplist = chName->getclientList();			
 	std::string clientListStr;
 	for (size_t i = 0; i < tmplist.size(); ++i) {
 		if (i > 0)
 		clientListStr += " ";
 		// Set @ for operator
-		if (tmpch->checkclientOper(&tmplist[i]))
+		if (chName->checkclientOper(&tmplist[i]))
 			clientListStr += "@";
 		clientListStr += tmplist[i].getnName();
 	}
-	sendToClient(cl->getfd(), RPL_NAMREPLY + cl->getnName() + " = " + tmpch->getchannelName() + " :" + clientListStr + "\r\n");
-	sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + tmpch->getchannelName() + " :End of /NAMES list\r\n");
+	sendToClient(cl->getfd(), RPL_NAMREPLY + cl->getnName() + " = " + chName->getchannelName() + " :" + clientListStr + "\r\n");
+	sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + chName->getchannelName() + " :End of /NAMES list\r\n");
 	std::cout << "client joined" << std::endl;
 }
 
@@ -591,7 +589,6 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() > 2) {
 		const char* tmp = line[2].c_str();
 		if (tmp[0] != ':') {
-
 			std::cerr << "Invalid msg param" << std::endl;
 			return ;
 		}

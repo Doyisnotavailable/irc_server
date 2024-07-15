@@ -57,12 +57,11 @@ class Channel {
 		// ------------------ //
 
 		void invClient(Client *cl);
-		bool checkinvClient(Client *cl);
+		bool checkinvClient(Client* cl);
 		void cleaninvList(); //used to clean invlist when changing flags
 		void removeInvite(Client *cl);
 		bool checkclientExist(Client* cl);
 		bool checkclientOper(Client* cl);
-		bool checkinvClient(Client* cl);
 		bool joinFlags(); //function to check if any of a flag is true when joining
 		void removeClient(Client *cl);
 		std::string getTopic() const;
