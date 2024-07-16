@@ -98,6 +98,7 @@ void Server::startServer() {
     while (::stopflag == false) {
         if (poll(&pollfds[0], pollfds.size(), -1) == -1 && stopflag == true)
             throw::InvalidInput();
+		usleep(20);
         for (size_t i = 0; i < pollfds.size(); i++) {
             if (pollfds[i].revents && POLLIN && !stopflag) {
                 if (pollfds[i].fd == serverfd)
@@ -256,7 +257,12 @@ void Server::addClient() {
 	struct pollfd NewPoll;
 	socklen_t len = sizeof(cliadd);
 
+	char str[512];
+	ssize_t size = recv(serverfd, str, sizeof(str), 0);
+
+	std::cout << "This is size " << size << std::endl;
 	int clientfd = accept(serverfd, (sockaddr *)&(cliadd), &len);
+
 	if (clientfd == -1)
 		{std::cout << "accept() failed" << std::endl; return;}
 
@@ -354,7 +360,7 @@ void Server::displayClient() {
 	for (size_t i = 0; i < clients.size(); ++i) {
 		std::cout << "Client nick name: " << clients[i].getnName() << std::endl;
 		std::cout << "Client user name: " << clients[i].getuName() << std::endl;
-		std::cout << "Client fd: " << clients[i].getfd() << std::endl;
+		std::cout << "Client fd: " << clients[i].getfd() << std::endl;	
 		std::cout << "Client ip: " << clients[i].getipAdd() << std::endl;
 	}
 }
@@ -400,7 +406,6 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 		if (isChannel(chName)) {
 			Channel *tmpch = getChannel(chName);
 			//check flags if its possible to join
-			if (!tmpch){addChannel(chName, *cl); return;}
 			if (tmpch->checkclientExist(cl)){
 				std::cout << "Client already at channel" << std::endl; //to change
 				return ;
@@ -419,7 +424,8 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 
 			} else
 				sendToClient(cl->getfd(), ERR_CHANNELISFULL + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+l)\r\n");
-			}
+		} else
+			addChannel(chName, *cl);
 	} else {
 		sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + chName + " :No such channel\r\n");
 		std::cout << "Invalid channel name" << std::endl;
@@ -598,7 +604,7 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 			tmp = target[i].c_str();
 			if (tmp[0] == '#'){
 				Channel *tmpch = getChannel(target[i]);
-				if (tmpch->checkclientExist(cl))
+				if (tmpch && tmpch->checkclientExist(cl))
 					privCMDsendtoChannel(tmpch, cl, tosend);
 				else {
 					sendToClient(cl->getfd(), ERR_NOTONCHANNEL + tmpch->getchannelName() + " :Cannot send to channel\r\n");
