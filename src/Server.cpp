@@ -151,34 +151,48 @@ void Server::receive(int fd) {
 		}
 	} else {
 		// str[size] = '\0';  ######################## THIS NEEDS REVIWING ########################## (commented to resolve a sigfault case when client send /disconnect cmd from irssi)
-		std::string line = str;
-		std::vector<std::string> vec = splitCmd(str);
+		partialMessage(*str, fd);
+		std::map<int, std::string>::iterator it = clbuffer.find(fd);
 
-		// std::cout << *vec.begin() << std::endl;
+		if (it != clbuffer.end()){
+			std::cout << "fd = " << it->first << "string = " << it->second << std::endl;
+			if (*it->second.end() - 1 == '\n'){
+				std::vector<std::string> vec = splitCmd(it->second);
+				if (vec.empty())
+					return ;
+				Client *client = getClient(fd);
 
-		if (vec.empty())
-			return ;
-		Client *client = getClient(fd);
-
-		if (!client)
-			return ;
-		if ((*vec.begin() == "CAP" || *vec.begin() == "PASS" || *vec.begin() == "NICK" || *vec.begin() == "USER")) // For registration
-			clAuthentication(fd, vec);
-		else if (client->getisCapNegotiated() == true && client->getisRegistered() == true) {
-			if (!checkReceived(line, getClient(fd)))
-				return ;
+				if (!client)
+					return ;
+				if ((*vec.begin() == "CAP" || *vec.begin() == "PASS" || *vec.begin() == "NICK" || *vec.begin() == "USER")) // 	For 	registration
+					clAuthentication(fd, vec);
+				else if (client->getisCapNegotiated() == true && client->getisRegistered() == true) {
+					if (!checkReceived(it->second, getClient(fd)))
+						return ;
+				}
+				else {
+					sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
+					std::cerr << "Client not registered" << std::endl;
+				}
+				if (client->getisCapNegotiated() == true || client->getnName().empty() || client->getuName().empty())
+					return;
+				else
+					sendWelcome(fd, client); // Send welcome message to the client(Neccessary for the client to start the 	connection.)
+				std::cout << "Message = " << it->second << std::endl;
+				clbuffer.erase(it);
+			}
 		}
-		else {
-			sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
-			std::cerr << "Client not registered" << std::endl;
-		}
-		
-		if (client->getisCapNegotiated() == true || client->getnName().empty() || client->getuName().empty())
-			return;
-		else
-			sendWelcome(fd, client); // Send welcome message to the client(Neccessary for the client to start the connection.)
 	}
 		// displayChannel();
+}
+
+void Server::partialMessage(char& str, int fd){
+	std::map<int, std::string>::iterator it = clbuffer.find(fd);
+	std::string tmp = &str;
+	if (it != clbuffer.end())
+		it->second += tmp;
+	else
+		clbuffer[fd] = str;
 }
 
 // Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.

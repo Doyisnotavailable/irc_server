@@ -3,7 +3,7 @@ BONUS_NAME              = BOT
 
 RM                      = rm -rf
 CXX                     = c++
-CXXFLAGS                = -Wall -Wextra -Werror -std=c++98 -g3
+CXXFLAGS                = -Wall -Wextra -Werror -std=c++98 -g3 -fsanitize=address
 
 OBJDIR                  = obj
 SRCS                    = src/main.cpp src/Server.cpp src/Errormsg.cpp src/Client.cpp src/Channel.cpp src/Util.cpp
