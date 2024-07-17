@@ -40,6 +40,7 @@ class Server {
         std::vector<class Client> clients;  // all of  the clients in server
         std::vector<class Channel> channels; // channels available in all server
         std::vector<struct pollfd> pollfds; // used for i/o of fds
+        std::map<int, std::string> clbuffer;
         int clientCount;
         Server();
     public:
@@ -110,7 +111,7 @@ class Server {
         // Channel commands
         void topicCMD(std::vector<std::string>& vec, Client* cl);
         void eraseClient(Client* cl);
-
+        void partialMessage(char* str, int fd);
         // int handleNC(int fd, std::string& str);
         // int registerNC(int fd, std::string& str);
 };

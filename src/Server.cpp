@@ -151,15 +151,15 @@ void Server::receive(int fd) {
 		}
 	} else {
 		// str[size] = '\0';  ######################## THIS NEEDS REVIWING ########################## (commented to resolve a sigfault case when client send /disconnect cmd from irssi)
-		partialMessage(*str, fd);
+		partialMessage(str, fd);
 		std::map<int, std::string>::iterator it = clbuffer.find(fd);
 
 		if (it != clbuffer.end()){
-			std::cout << "fd = " << it->first << "string = " << it->second << std::endl;
-			if (*it->second.end() - 1 == '\n'){
-				std::vector<std::string> vec = splitCmd(it->second);
-				if (vec.empty())
-					return ;
+			std::cout << "fd = " << it->first << " string = " << it->second << std::endl;
+			if (*(it->second.end() - 1) == '\n'){
+				std::string line(it->second);
+				clbuffer.erase(it);
+				std::vector<std::string> vec = splitCmd(line);
 				Client *client = getClient(fd);
 
 				if (!client)
@@ -167,7 +167,7 @@ void Server::receive(int fd) {
 				if ((*vec.begin() == "CAP" || *vec.begin() == "PASS" || *vec.begin() == "NICK" || *vec.begin() == "USER")) // 	For 	registration
 					clAuthentication(fd, vec);
 				else if (client->getisCapNegotiated() == true && client->getisRegistered() == true) {
-					if (!checkReceived(it->second, getClient(fd)))
+					if (!checkReceived(line, getClient(fd)))
 						return ;
 				}
 				else {
@@ -178,17 +178,16 @@ void Server::receive(int fd) {
 					return;
 				else
 					sendWelcome(fd, client); // Send welcome message to the client(Neccessary for the client to start the 	connection.)
-				std::cout << "Message = " << it->second << std::endl;
-				clbuffer.erase(it);
+				
 			}
 		}
 	}
 		// displayChannel();
 }
 
-void Server::partialMessage(char& str, int fd){
+void Server::partialMessage(char* str, int fd){
 	std::map<int, std::string>::iterator it = clbuffer.find(fd);
-	std::string tmp = &str;
+	 std::string tmp(str);
 	if (it != clbuffer.end())
 		it->second += tmp;
 	else
@@ -271,10 +270,6 @@ void Server::addClient() {
 	struct pollfd NewPoll;
 	socklen_t len = sizeof(cliadd);
 
-	char str[512];
-	ssize_t size = recv(serverfd, str, sizeof(str), 0);
-
-	std::cout << "This is size " << size << std::endl;
 	int clientfd = accept(serverfd, (sockaddr *)&(cliadd), &len);
 
 	if (clientfd == -1)
@@ -316,8 +311,9 @@ void Server::removeClient(int fd) {
 			break ;
 		}
 	}
-
-
+	std::map<int, std::string>::iterator it = clbuffer.find(fd);
+	if (it != clbuffer.end())
+		clbuffer.erase(it);
 }
 
 void Server::addChannel(const std::string& chName, Client& cl) {
@@ -426,7 +422,7 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 			}
 			if (!tmpch->joinFlags()){addclienttoChannel(tmpch, cl); return;}
 			if ((tmpch->getclientFlag() && tmpch->getclientSize() < tmpch->getlimit()) || !tmpch->getclientFlag()){
-				if (tmpch->getinvFlag() && tmpch->checkinvClient(cl)){
+				if ((tmpch->getinvFlag() || tmpch->getkeyFlag()) && tmpch->checkinvClient(cl)){
 					addclienttoChannel(tmpch, cl);
 					tmpch->removeInvite(cl);
 				} else if (tmpch->getinvFlag() && !tmpch->checkinvClient(cl))
@@ -549,7 +545,7 @@ void Server::partCMD(std::vector<std::string> line, Client* cl){
 void Server::kickCMD(std::vector<std::string> line, Client *cl){
 	if (line.size() > 2){
 		std::string reason = " :Client has been kicked out of the channel\r\n";
-		if (line.size() >= 3){
+		if (line.size() > 3){
 			const char* tmp = line[3].c_str();
 			// std::cout << "this is line 3 = " << tmp << std::endl;
 			if (tmp[0] == ':')
@@ -620,10 +616,10 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 				Channel *tmpch = getChannel(target[i]);
 				if (tmpch && tmpch->checkclientExist(cl))
 					privCMDsendtoChannel(tmpch, cl, tosend);
-				else {
+				else if (tmpch){
 					sendToClient(cl->getfd(), ERR_NOTONCHANNEL + tmpch->getchannelName() + " :Cannot send to channel\r\n");
-					// sendToClient(cl->getfd(), cl->getnName() + " " + tmpch->getchannelName() + " :Cannot send to channel\r\n");
-				}
+				} else
+					sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + target[i] + " :No such channel\r\n");
 				continue ;
 			}
 			Client* receiver = getClient(target[i]);
@@ -775,7 +771,7 @@ int Server::setChannelLimit(Channel* chName, Client *cl, std::string str){
 void Server::setChannelKey(Channel* ch, Client* cl, std::string str){
 	//check str for alphanumerical and empty.
 	// ERR_INVALIDKEY (525) 
-	if(checkpass(str)) {
+	if(!checkpass(str)) {
 		sendToClient(cl->getfd(), ERR_INVALIDKEY " :key is not well-formed\r\n");
 		return ;
 	}
