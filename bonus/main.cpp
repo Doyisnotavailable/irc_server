@@ -1,5 +1,8 @@
 #include "BOT.hpp"
 
+// bool censorFlag = false;
+bool _censorFlag = false;
+
 int sendToServer(int sockfd, const std::string& message) {
 	return send(sockfd, message.c_str(), message.length(), 0);
 }
@@ -18,6 +21,7 @@ std::string generateRandomNick() {
 
 int main(int ac, char **av) {
 
+
 	if (ac != 5) {
         std::cerr << "Usage: " << av[0] << " <IP Address> <Port> <Password> <ChannelName" << std::endl;
         return 1;
@@ -28,10 +32,6 @@ int main(int ac, char **av) {
     const char *password = av[3];
 	std::string channelName = av[4];
 
-    std::cout << "IP Address: " << ipAddress << std::endl;
-    std::cout << "Port: " << port << std::endl;
-    std::cout << "Password: " << password << std::endl;
-
     // Create a socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -39,7 +39,7 @@ int main(int ac, char **av) {
         return 1;
     }
 
-    std::cout << "Socket created successfully" << std::endl;
+    // std::cout << "Socket created successfully" << std::endl;
 
     // Set socket to non-blocking
     int flags = fcntl(sockfd, F_GETFL, 0);
@@ -57,7 +57,7 @@ int main(int ac, char **av) {
         return 1;
     }
 
-    std::cout << "Address converted successfully" << std::endl;
+    // std::cout << "Address converted successfully" << std::endl;
 
     // Connect to the server
     int result = connect(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
@@ -67,7 +67,7 @@ int main(int ac, char **av) {
         return 1;
     }
 
-    std::cout << "Connecting to the server..." << std::endl;
+    // std::cout << "Connecting to the server..." << std::endl;
 	usleep(1000000);
 
     std::cout << "Connected to the server" << std::endl;
@@ -78,9 +78,7 @@ int main(int ac, char **av) {
     // Send the password
     sendToServer(sockfd, "PASS " + std::string(password) + "\r\n");
 	usleep(1000000); 
-    // sendToServer(sockfd, "NICK BOT\r\n");
     std::string nick = generateRandomNick();
-    // std::cout << "Generated random nickname: " << nick << std::endl;
     sendToServer(sockfd, "NICK " + nick + "\r\n");
 	usleep(1000000);
     sendToServer(sockfd, "USER BOT BOT localhost :BOT\r\n");
@@ -96,33 +94,50 @@ int main(int ac, char **av) {
     BOT bot;
     // Main loop to process incoming messages
     char buffer[1024];
-    while (true) {
-        int bytesRead = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
-        if (bytesRead < 0) {
-            std::cerr << "Error reading from socket" << std::endl;
-            break;
-        } else if (bytesRead == 0) {
-            std::cerr << "Server closed connection" << std::endl;
-            break;
-        } else {
-            buffer[bytesRead] = '\0';
-            std::string message(buffer);
+    std::signal(SIGINT, sigHandlerBOT);
+	std::signal(SIGQUIT, sigHandlerBOT);
 
-            // Check if the message contains a swear word
-            if (bot.sensorMsg(message)) {
-                std::cout << "Swear word detected in message: " << message << std::endl;
-                // Extract the user's nickname and kick them from the channel
-                size_t nickStart = message.find(':') + 1;
-                size_t nickEnd = message.find('!', nickStart);
-                if (nickStart != std::string::npos && nickEnd != std::string::npos) {
-                    std::string userNick = message.substr(nickStart, nickEnd - nickStart);
-                    sendToServer(sockfd, "KICK #chan " + userNick + " Swearing is not allowed");
+    // set poll for BOT
+    struct pollfd pollfds[1];
+    pollfds[0].fd = sockfd;
+    pollfds[0].events = POLLIN;
+    pollfds[0].revents = 0;
+
+
+    while (_censorFlag == false) {
+        if (poll(pollfds, 1, 1000) == -1 && _censorFlag == true) {
+            break;
+        }
+        if (pollfds[0].revents && POLLIN && _censorFlag == false) {
+            
+            int bytesRead = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+            if (bytesRead < 0) {
+                std::cerr << "Error reading from socket" << std::endl;
+                break;
+            } else if (bytesRead == 0 || _censorFlag == true) {
+                std::cerr << "Server closed connection" << std::endl;
+                break;
+            } else {
+                buffer[bytesRead] = '\0';
+                std::string message(buffer);
+
+                // Check if the message contains a swear word
+                if (bot.censorMsg(message)) {
+                    std::cout << "Swear word detected in message: " << message << std::endl;
+                    // Extract the user's nickname and kick them from the channel
+                    size_t nickStart = message.find(':') + 1;
+                    size_t nickEnd = message.find('!', nickStart);
+                    if (nickStart != std::string::npos && nickEnd != std::string::npos) {
+                        std::string userNick = message.substr(nickStart, nickEnd - nickStart);
+                        std::cout << "Kicking user: " << userNick << std::endl;
+                        sendToServer(sockfd, "KICK #" + channelName + " " + userNick + " :Swearing_not_allowed\r\n");
+                    }
                 }
             }
+            std::cout << buffer << std::endl;
         }
-		std::cout << buffer << std::endl;
-    }
 
+    }
     // Close the socket
     close(sockfd);
     return 0;

@@ -1,5 +1,6 @@
 #include "BOT.hpp"
 
+// bool censorFlag = false;
 
 BOT::BOT() {
 	swearWords.push_back("SHIT");
@@ -7,6 +8,8 @@ BOT::BOT() {
 	swearWords.push_back("HELL");
 	// swearWords.push_back("ASSHOLE");
 	// swearWords.push_back("BASTARD");
+
+    // this->censorFlag = false;
 }
 
 BOT::~BOT() {
@@ -24,7 +27,7 @@ BOT& BOT::operator=(const BOT& toasgn) {
 	return *this;
 }
 
-bool BOT::sensorMsg(const std::string& msg) {
+bool BOT::censorMsg(const std::string& msg) {
     return containsSwearWord(msg);
 }
 
@@ -42,5 +45,12 @@ bool BOT::containsSwearWord(const std::string& msg) {
         }
     }
     return false;
+}
+
+void sigHandlerBOT(int signum) {
+    (void) signum;
+    _censorFlag = true;
+    std::cout << "after sig " << _censorFlag << std::endl;
+    std::cout << "\nBOT QUITING\r\n" << std::endl;
 }
 
