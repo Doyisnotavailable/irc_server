@@ -1,0 +1,4 @@
+Need to send message for INVITE
+	inviting someone with CHANOPPRIV should send errormsg
+RPL on MODE command
+	MODE #chan +i says NOTCHANNELOP when the user isnt in the Channel
