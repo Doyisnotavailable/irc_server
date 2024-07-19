@@ -56,6 +56,10 @@ Server::~Server() {
 	}
 }
 
+std::string Server::getHostname() const {
+	return this->hostname;
+}
+
 void Server::initserverSock() {
     struct sockaddr_in adr;
 
@@ -205,7 +209,7 @@ void Server::sendWelcome(int fd, Client* client) {
 		"*                                            *\n"
 		"**********************************************\n";
 
-	sendToClient(fd, ":" + client->getuName() + RPL_WELCOME + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + client->getipAdd() + "\r\n"); // 001 RPL_WELCOME
+	sendToClient(fd, ":" + client->getuName() + RPL_WELCOME + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + getHostname() + "\r\n"); // 001 RPL_WELCOME
     sendToClient(fd, ":" + client->getuName() + RPL_YOURHOST + client->getnName() + " :Your host is IRC_M2, running version APEX.1.0\r\n"); // 002 RPL_YOURHOST
     sendToClient(fd, ":" + client->getuName() + RPL_CREATED + client->getnName() + " :This server was created by Martin and Miguel\r\n"); // 003 RPL_CREATED
     sendToClient(fd, ":" + client->getuName() + RPL_MYINFO + client->getnName() + " IRC_M2 APEX.1.0 io ovimnqpsrtklbf :This server supports multiple modes\r\n"); // 004 RPL_MYINFO
@@ -325,7 +329,7 @@ void Server::addChannel(const std::string& chName, Client& cl) {
 	channels.push_back(ch);
 	// cl.addChannel(ch); //If commented, channel created is not having operator privileges. if uncommented, channel created is having operator privileges, but client cannot rejoin group after leaving(kicked out).
 	// sendToClient(cl.getfd(), "JOIN :" + ch.getchannelName() + "\r\n");
-	sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + cl.getipAdd() + " JOIN :" + ch.getchannelName() + "\r\n");
+	sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + getHostname() + " JOIN :" + ch.getchannelName() + "\r\n");
 	sendToClient(cl.getfd(), RPL_TOPIC + cl.getnName() + " " + chName + " :" + ch.getTopic() + "\r\n");
 	sendToClient(cl.getfd(), RPL_NAMREPLY + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
 	sendToClient(cl.getfd(), RPL_ENDOFNAMES + cl.getnName() + " " + chName + " :End of /NAMES list\r\n");
@@ -371,7 +375,7 @@ void Server::displayClient() {
 		std::cout << "Client nick name: " << clients[i].getnName() << std::endl;
 		std::cout << "Client user name: " << clients[i].getuName() << std::endl;
 		std::cout << "Client fd: " << clients[i].getfd() << std::endl;	
-		std::cout << "Client ip: " << clients[i].getipAdd() << std::endl;
+		std::cout << "Client ip: " << getHostname() << std::endl;
 	}
 }
 
@@ -413,10 +417,11 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 	const char *tmp = chName.c_str();
 	if (tmp[0] == '#'){
 		//check if the channel is existing
-		if (isChannel(chName)) {
-			Channel *tmpch = getChannel(chName);
+		Channel *tmpch = getChannel(chName);
+		if (tmpch) {
 			//check flags if its possible to join
 			if (tmpch->checkclientExist(cl)){
+				sendToClient(cl->getfd(), ERR_ALREADYREGISTRED + cl->getnName() + " " + chName + " :You're already in that channel\r\n");
 				std::cout << "Client already at channel" << std::endl; //to change
 				return ;
 			}
@@ -443,10 +448,10 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 }
 
 void Server::addclienttoChannel(Channel* chName, Client* cl){
-	sendToChannel(*chName, ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + chName->getchannelName() + "\r\n");
 	chName->addClient(*cl);
+	sendToChannel(*chName, ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " JOIN :" + chName->getchannelName() + "\r\n");
 
-	sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + chName->getchannelName() + "\r\n");
+	sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " JOIN :" + chName->getchannelName() + "\r\n");
 	sendToClient(cl->getfd(), RPL_TOPIC + cl->getnName() + " " + chName->getchannelName() + " :" + chName->getTopic() + "\r\n");	
 	std::vector<class Client> tmplist = chName->getclientList();			
 	std::string clientListStr;
@@ -509,6 +514,14 @@ void Server::partCMD(std::vector<std::string> line, Client* cl){
 
 		for (size_t i = 0; i < chname.size(); ++i){
 			Channel* tmpch = getChannel(chname[i]);
+
+			// Show clients in channel before removing
+			// std::cout << "Channel name: " << chname[i]  << " Channel size: " << tmpch->getclientSize() << std::endl;
+			// std::cout << "Clients in channel before removing: " << std::endl;
+			// for (int i = 0; i < tmpch->getclientSize(); ++i)
+			// 	std::cout << "Client in channel: " << tmpch->getclientList()[i].getnName() << std::endl;
+
+
 			if (!tmpch){
 				sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + chname[i] + " :No such channel\r\n");
 				continue;
@@ -519,15 +532,21 @@ void Server::partCMD(std::vector<std::string> line, Client* cl){
 			}
 
 			// Remove client from channel
-			eraseClient(cl);
+			// eraseClient(cl);
 			tmpch->removeClient(cl);
-			sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " PART " + tmpch->getchannelName() + reason);
+			sendToClient(cl->getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " PART " + tmpch->getchannelName() + reason);
 
+			// Show clients in channel after removing
+			// std::cout << "Clients in channel after removing: " << std::endl;
+			// for (int i = 0; i < tmpch->getclientSize(); ++i)
+			// 	std::cout << "Client in channel: " << tmpch->getclientList()[i].getnName() << std::endl;
+
+			
 			// Broadcast to all clients in the channel
 			std::vector<class Client> tmplist = tmpch->getclientList();
 			for (size_t i = 0; i < tmplist.size(); ++i){
 				if (tmplist[i].getfd() != cl->getfd())
-					sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " PART " + tmpch->getchannelName() + reason);
+					sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " PART " + tmpch->getchannelName() + reason);
 			}
 			// Delete channel if no clients are in it
 			if (tmpch->getclientSize() == 0) {
@@ -572,7 +591,7 @@ void Server::kickCMD(std::vector<std::string> line, Client *cl){
 					continue;
 				}
 				// if (tmpcl){
-				eraseClient(tmpcl);
+				// eraseClient(tmpcl);
 				tmpch->removeClient(tmpcl);
 				if (reason.empty()){
 					sendToClient(tmpcl->getfd(), ":" + cl->getnName() + " KICK " + tmpch->getchannelName() + " " + tmpcl->getnName() + " :You have been kicked from the channel\r\n");
@@ -645,7 +664,7 @@ void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
 	for (size_t i = 0; i < tmplist.size(); ++i){
 		if (cl->getfd() == tmplist[i].getfd())
 			continue ;
-		sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!" + cl->getnName() + "@" + cl->getipAdd() + " PRIVMSG " + ch->getchannelName() + " " + tosend);
+		sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!" + cl->getnName() + "@" + getHostname() + " PRIVMSG " + ch->getchannelName() + " " + tosend);
 	}
 }
 
@@ -746,7 +765,7 @@ void Server::inviteCMD(std::vector<std::string> line, Client* cl){
 			else {
 				//Client should be invited not joined, have to add channel to the clients invited list so it could bypass keys and such in
 				tmpch->invClient(tmp);
-				sendToClient(tmp->getfd(), ":" + cl->getnName() + "!" + cl->getipAdd() + " INVITE " + tmp->getnName() + " " + tmpch->getchannelName() + "\r\n");
+				sendToClient(tmp->getfd(), ":" + cl->getnName() + "!" + getHostname() + " INVITE " + tmp->getnName() + " " + tmpch->getchannelName() + "\r\n");
 			}
 		}
 	} else
@@ -821,9 +840,9 @@ void Server::quitCMD(std::vector<std::string> line, Client* cl){
 	std::vector<Channel> chList = channels;
 	for (size_t i = 0; i < chList.size(); ++i) {
 		if (chList[i].checkclientExist(cl))
-			// sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " JOIN :" + tmpch->getchannelName() + "\r\n");
+			// sendToClient(tmplist[i].getfd(), ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " JOIN :" + tmpch->getchannelName() + "\r\n");
 			// sendToChannel(chList[i], ":" + cl->getnName() + " PART " + chList[i].getchannelName() + " " + cl->getnName() + " :" + quitMessage + "\r\n");
-			sendToChannel(chList[i], ":" + cl->getnName() + "!~" + cl->getuName() + "@" + cl->getipAdd() + " PART :" + chList[i].getchannelName() + "\r\n");
+			sendToChannel(chList[i], ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " PART :" + chList[i].getchannelName() + "\r\n");
 	}
 	std::cout << "Client " << cl->getnName() << " has quit" << std::endl;
 	if (line.size() > 1) {
@@ -1024,7 +1043,7 @@ void Server::nickCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
 	}
 	// send new client nick name to client
 	if (client->getisNick() == true) {
-		sendToClient(fd, ":" + client->getnName() + "!" + client->getuName() + "@" + client->getipAdd() + " NICK :" + vec[1] + "\r\n");
+		sendToClient(fd, ":" + client->getnName() + "!" + client->getuName() + "@" + getHostname() + " NICK :" + vec[1] + "\r\n");
 
 		// Broadcast to channels that client has updated thier nick name
 		std::vector<Channel> chList = channels;

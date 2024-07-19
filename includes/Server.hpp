@@ -50,6 +50,7 @@ class Server {
         //getter and setter here
         std::string getpass() const;
         int getport() const;
+        std::string getHostname() const;
         int getserverfd() const;
         bool getstopflag() const;
         int getclientCount() const;
