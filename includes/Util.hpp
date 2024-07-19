@@ -14,5 +14,7 @@ bool checkpass(std::string& pass);
 int parse_port(const char *str);
 int parse_password(const char *str);
 std::string intToString(int number);
+bool check_ChanName(std::string& name);
+
 
 #endif

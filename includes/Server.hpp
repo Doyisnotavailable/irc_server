@@ -27,8 +27,9 @@
 #include <cctype>
 #include "Util.hpp"
 
-#define MAX_CLIENTS 100
+#define MAX_CLIENTS INT_MAX
 #define MAX_NICK_LENGTH 12
+#define MAX_CHAN_NAME_LEN 20
 
 class Server {
     private:
@@ -65,7 +66,7 @@ class Server {
         void addClient();
 		void setClient();
         void setClientCount(int count);
-        void addChannel(const std::string& chName, Client& cl);
+        void addChannel(std::string& chName, Client& cl);
 		void removeClient(int fd);
         void removeClientAllChannels(int fd);
 		int checkReceived(std::string str, Client* cl);
@@ -89,7 +90,8 @@ class Server {
         void quitCMD(std::vector<std::string> line, Client* cl);
         void partCMD(std::vector<std::string> line, Client* cl);
 		void inviteCMD(std::vector<std::string> line, Client* cl);
-        // tester utils
+
+        // tester utils : remove later
 		void displayChannel();
 		void displayClient();
 

@@ -95,3 +95,16 @@ std::string intToString(int number) {
     oss << number;
     return oss.str();
 }
+
+// Parse Channle name
+bool check_ChanName(std::string& str) {
+    if (str.empty()) {
+        return false;
+    }
+
+    if (str[0] != '#') {
+        return false;
+    }
+
+    return true;
+}
