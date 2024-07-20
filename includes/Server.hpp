@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <cstdio>
 
 #include "Channel.hpp"
 #include "Client.hpp"
@@ -54,11 +55,7 @@ public:
 
     // Getters
     std::string getpass() const;
-    int getport() const;
     std::string getHostname() const;
-    int getserverfd() const;
-    bool getstopflag() const;
-    int getclientCount() const;
     Client* getClient(int fd); // Finding client using its file descriptor
     Client* getClient(const std::string& name);
     Channel* getChannel(const std::string& chname);
@@ -68,11 +65,8 @@ public:
     void startServer(); // Main loop for server
     void receive(int fd); // Get incoming messages
     void addClient();
-    void setClient();
-    void setClientCount(int count);
     void addChannel(std::string& chName, Client& cl);
     void removeClient(int fd);
-    void removeClientAllChannels(int fd);
     int  checkReceived(std::string str, Client* cl);
     bool isChannel(const std::string& chname);
 
@@ -107,14 +101,12 @@ public:
     std::vector<std::string> splitCmd(const std::string& str);
     Client* getClientByFd(int fd);
     ssize_t sendToClient(int fd, const std::string& msg);
-    void setClientInfo(int fd);
     void sendWelcome(int fd, Client* client);
     void sendToChannel(Channel& ch, const std::string& msg);
     bool isNickValid(const std::string& nick);
     std::string addStrings(std::vector<std::string> lines, size_t i);
     void eraseClient(Client* cl);
     void partialMessage(char* str, int fd);
-
 };
 
 // Signal handler

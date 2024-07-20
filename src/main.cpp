@@ -17,6 +17,5 @@ int main(int ac, char **av) {
         return 0;
 	} else
         std::cerr << "Erorr: Usage: ./ircserv <port> <password>\n";
-	
     return 1;
 }
