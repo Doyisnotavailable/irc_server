@@ -5,7 +5,10 @@
 #include <poll.h>
 #include <cstring>
 
-bool stopflag = false;
+// Global variable to stop the server
+bool stopflag = false; 
+
+// Constructor to initialize server with port and password
 Server::Server(std::string port, std::string pass) {
     if (port.empty() || pass.empty()) {
 		throw emptyArg();
@@ -30,18 +33,20 @@ Server::Server(std::string port, std::string pass) {
     startServer();
 }
 
+// Destructor to close all file descriptors
 Server::~Server() {
-    // close(serverfd); // close all fds
 	for (size_t i = 0; i < pollfds.size(); ++i){
 		std::cout << "closing port " << pollfds[i].fd << std::endl;
 		close(pollfds[i].fd);
 	}
 }
 
+// Getter for the server hostname
 std::string Server::getHostname() const {
 	return this->hostname;
 }
 
+// Initialize the server socket, bind it to the port, and start listening
 void Server::initserverSock() {
     struct sockaddr_in adr;
 
@@ -69,6 +74,7 @@ void Server::initserverSock() {
     pollfds.push_back(paul);
 }
 
+// Start the server and listen for incoming connections and messages from clients
 void Server::startServer() {
     std::cout << "Starting Server" << std::endl;
 	char hostname [256];
@@ -94,7 +100,7 @@ void Server::startServer() {
     }
 }
 
-
+// Erase client from all channels (used when client disconnects(QUIT))
 void Server::eraseClient(Client* cl) {
 	// Erase client from all channels
 	for (size_t i = 0; i < channels.size(); ++i){
@@ -102,11 +108,14 @@ void Server::eraseClient(Client* cl) {
 			channels[i].removeClient(cl);
 			channels[i].removeclientOper(cl);
 		}
-		if (channels[i].getclientSize() == 0)
+		if (channels[i].getclientSize() == 0) {
+			std::cout << (cl->getfd(), "Channel " + channels[i].getchannelName() + " has been deleted\r\n") << std::endl;
 			channels.erase(channels.begin() + i);
+		}
 	}
 }
 
+// Receive and Process messages from clients
 void Server::receive(int fd) {
 	char str[512];
 	memset(str, 0, sizeof(str));
@@ -159,49 +168,172 @@ void Server::receive(int fd) {
 	}
 }
 
-void Server::partialMessage(char* str, int fd){
-	std::map<int, std::string>::iterator it = clbuffer.find(fd);
-	 std::string tmp(str);
-	if (it != clbuffer.end())
-		it->second += tmp;
-	else
-		clbuffer[fd] = str;
+// Handle CAP, PASS, NICK, USER commands for client authentication
+void Server::clAuthentication(int fd, std::vector<std::string>& vec) {
+	bool isCap = false;
+	Client *client = getClientByFd(fd);
+
+	if (vec.empty()) {
+		return ;
+	}
+
+	for (size_t i = 0; i < vec.size(); i++) {
+		if (vec[0] ==  "CAP")
+			isCap = true;
+		if (vec[0] == "PASS" || vec[0] == "pass")
+			passCMD(fd, vec, isCap);
+		else if (vec[0] == "NICK" || vec[0] == "nick") 
+			nickCMD(fd, vec, isCap);
+		else if (vec[0] == "USER" || vec[0] == "user") 
+			userCMD(fd, vec);
+		else if (vec[0] == "CAP" || vec[0] == "cap")
+			capCMD(client, vec, fd);
+
+		vec.erase(vec.begin());
+		if (vec.empty()) {
+			break;
+		}
+		vec.erase(vec.begin());
+	}
+	return ;
 }
 
-// Sends welcome messages and server details to the newly connected client. Crucial for the client to start the connection.
-void Server::sendWelcome(int fd, Client* client) {
-	std::string welcomeMessage = 
-		"**********************************************\n"
-		"*                                            *\n"
-		"*            Welcome to the IRC_M&Ms         *\n"
-		"*                                            *\n"
-		"*       Developed by Martin and Michael      *\n"
-		"*                                            *\n"
-		"**********************************************\n";
+// Process CAP command for client capabilities
+void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
+	if (vec[1] == "LS" || vec[1] == "ls") {
+		if (client->getisCapNegotiated() == true) {
+			return ;
+		}
+		sendCapabilities(fd); // set the client info. Send the capabilities to the client.
+	} else if (vec[1] == "REQ" || vec[1] == "req") {
+		sendToClient(fd, "CAP * ACK " + vec[2] + "\r\n");
+		vec.erase(vec.begin()); // remove the CAP command to process the next command
+	} else if (vec[1] == "END" || vec[1] == "end") {
+		
+	}
+	 else {
+		sendToClient(fd, ERR_UNKNOWNCOMMAND " * :Unknown CAP command\r\n");
+	}
+}
 
-	sendToClient(fd, ":" + client->getuName() + RPL_WELCOME + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + getHostname() + "\r\n"); // 001 RPL_WELCOME
-    sendToClient(fd, ":" + client->getuName() + RPL_YOURHOST + client->getnName() + " :Your host is IRC_M2, running version APEX.1.0\r\n"); // 002 RPL_YOURHOST
-    sendToClient(fd, ":" + client->getuName() + RPL_CREATED + client->getnName() + " :This server was created by Martin and Miguel\r\n"); // 003 RPL_CREATED
-    sendToClient(fd, ":" + client->getuName() + RPL_MYINFO + client->getnName() + " IRC_M2 APEX.1.0 io ovimnqpsrtklbf :This server supports multiple modes\r\n"); // 004 RPL_MYINFO
-    sendToClient(fd, ":" + client->getuName() + RPL_ISUPPORT + client->getnName() + " CHANTYPES=#& PREFIX=(ov)@+ NETWORK=IRC_M2 :are supported by this server\r\n"); // 005 RPL_ISUPPORT
+// Process PASS command for client authentication (password)
+void Server::passCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
+	if (getClientByFd(fd)->getisPass() == true) {
+		sendToClient(fd, ERR_ALREADYREGISTRED " * :You may not reregister\r\n");
+		// std::cerr << "Client [" << fd << "] may not reregister" << std::endl;
+		return ;
+	}
 
-    sendToClient(fd, ":" + client->getuName() + RPL_LUSERCLIENT + client->getnName() + " :There are 10 users and 3 services on 1 server\r\n"); // 251 RPL_LUSERCLIENT
-    sendToClient(fd, ":" + client->getuName() + RPL_LUSEROP + client->getnName() + " 2 :operator(s) online\r\n"); // 252 RPL_LUSEROP
-    sendToClient(fd, ":" + client->getuName() + RPL_LUSERUNKNOWN + client->getnName() + " 1 :unknown connection(s)\r\n"); // 253 RPL_LUSERUNKNOWN
-    sendToClient(fd, ":" + client->getuName() + RPL_LUSERCHANNELS + client->getnName() + " 5 :channels formed\r\n"); // 254 RPL_LUSERCHANNELS
-    sendToClient(fd, ":" + client->getuName() + RPL_LUSERME + client->getnName() + " :I have " + intToString(this->clientCount) + " clients and 1 servers\r\n"); // 255 RPL_LUSERME	
+	if (vec.size() < 2 || vec[1].empty()) {
+		sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
+		// std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
+		return ;
+	}
 
-    sendToClient(fd, ":" + client->getuName() + RPL_MOTDSTART + client->getnName() + " :- " + client->getuName() + " Message of the Day -\r\n"); // 375 RPL_MOTDSTART
-    sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Welcome to the best IRC server!\r\n"); // 372 RPL_MOTD
-    sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Enjoy your stay!\r\n"); // 372 RPL_MOTD
-    sendToClient(fd, ":" + client->getuName() + RPL_ENDOFMOTD + client->getnName() + " :End of /MOTD command.\r\n"); // 376 RPL_ENDOFMOTD
+	if (vec.size() != 2) {
+		if (isCap == false) {
+			sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
+			// std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
+			return ;
+		}
+	}
 
-	sendToClient(fd, welcomeMessage);
-	client->setisCapNegotiated(true);
-	this->clientCount++;
+	if (vec[1] == this->pass) {
+		getClientByFd(fd)->setisPass(true);
+		// std::cout << "Password is correct for client [" << fd << "]" << std::endl;
+		return ;
+	} else {
+		sendToClient(fd, ERR_PASSWDMISMATCH " * :Password incorrect\r\n");
+		// std::cerr << "Password is incorrect for client [" << fd << "]" << std::endl;
+		return ;
+	}
+}
+
+// Process NICK command to set/change the client nickname
+void Server::nickCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
+	// (void)isCap;
+	if (getClientByFd(fd)->getisPass() == false) {
+		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
+		return ;
+	}
+
+	if (vec.size() < 2) {
+		sendToClient(fd, ERR_NONICKNAMEGIVEN " * :No nickname given\r\n");
+		return;
+	}
+
+	if (vec.size() != 2) {
+		if (isCap == false) {
+			sendToClient(fd, ERR_NEEDMOREPARAMS " * NICK :Not enough parameters\r\n");
+			return ;
+		}
+	}
+
+	if (!isNickValid(vec[1])) {
+		sendToClient(fd, ERR_ERRONEUSNICKNAME + vec[1] + " :Erroneous Nickname\r\n");
+		return ;
+	}
+
+	Client *client = getClientByFd(fd);
+
+	for (size_t i = 0; i < clients.size(); i++) {
+		if (clients[i].getnName() == vec[1]) {
+			getClientByFd(fd)->setisNick(true);
+			sendToClient(fd, ERR_NICKNAMEINUSE + vec[1] + " :Nickname is already in use\r\n");
+			return ;
+		}
+	}
+	// send new client nick name to client
+	if (client->getisNick() == true) {
+		sendToClient(fd, ":" + client->getnName() + "!" + client->getuName() + "@" + getHostname() + " NICK :" + vec[1] + "\r\n");
+
+		// Broadcast to channels that client has updated thier nick name
+		std::vector<Channel> chList = channels;
+		for (size_t i = 0; i < chList.size(); ++i) {
+			if (chList[i].checkclientExist(client)) {
+				for (int j = 0; j < chList[i].getclientSize(); ++j) {
+					if (chList[i].getclientList()[j].getfd() != fd)
+						sendToClient(chList[i].getclientList()[j].getfd(), ":" + client->getnName() + " NICK :" + vec[1] + "\r\n");
+				}
+			}
+		}
+
+	}
+	std::string oldNick = client->getnName();
+	client->setnName(vec[1]);
+	client->setisNick(true);
 }
 
 
+// Process USER command to set the client username
+void Server::userCMD(int fd, const std::vector<std::string>& vec) {
+
+	if (getClientByFd(fd)->getisPass() == false || getClientByFd(fd)->getisNick() == false) {
+		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
+		return ;
+	} else if (getClientByFd(fd)->getisRegistered() == true) {
+		sendToClient(fd, ERR_ALREADYREGISTRED " *" + getClientByFd(fd)->getnName() + " :You may not reregister\r\n");
+	}
+	
+	if (vec.size() < 5) {
+		sendToClient(fd, ERR_NEEDMOREPARAMS " * USER :Not enough parameters\r\n");
+		return;
+	}
+
+	if (!vec[1].empty()) {
+		Client *client = getClientByFd(fd);
+		
+		client->setuName(vec[1]);
+		client->setservName(vec[3]);
+		client->setrealName(vec[4]);
+		client->setisRegistered(true);
+	}
+	else {
+		sendToClient(fd, ERR_NEEDMOREPARAMS " * USER :Not enough parameters\r\n");
+	}
+}
+
+// Process JOIN, PART, KICK, TOPIC, MODE, PRIVMSG, INVITE, QUIT, PING commands
 int Server::checkReceived(std::string str, Client* cl) {
 
 	if (cl->getisNick() == false) {
@@ -236,6 +368,7 @@ int Server::checkReceived(std::string str, Client* cl) {
 	return 1;
 }
 
+// accept() new client connections and add them to the pollfd list and client list
 void Server::addClient() {
 	Client client;
 	struct sockaddr_in cliadd;
@@ -267,93 +400,40 @@ void Server::addClient() {
 	pollfds.push_back(NewPoll); //-> add the client socket to the pollfd
 }
 
-void Server::removeClient(int fd) {
-	
-	for (size_t i = 0; i < clients.size(); ++i) {
-		if (clients[i].getfd() == fd) {
-			clients.erase(clients.begin() + i);
-			break ;
-		}
-	}
-	for (size_t i = 0; i < pollfds.size(); ++i){
-		if (pollfds[i].fd == fd){
-			pollfds.erase(pollfds.begin() + i);
-			break ;
-		}
-	}
-	std::map<int, std::string>::iterator it = clbuffer.find(fd);
-	if (it != clbuffer.end())
-		clbuffer.erase(it);
+// Sends welcome messages and server details to the newly connected client
+void Server::sendWelcome(int fd, Client* client) {
+	std::string welcomeMessage = 
+		"**********************************************\n"
+		"*                                            *\n"
+		"*            Welcome to the IRC_M&Ms         *\n"
+		"*                                            *\n"
+		"*       Developed by Martin and Michael      *\n"
+		"*                                            *\n"
+		"**********************************************\n";
+
+	sendToClient(fd, ":" + client->getuName() + RPL_WELCOME + client->getnName() + " :Welcome to the IRC_M2 Network, " + client->getnName() + "!~" + client->getuName() + "@" + getHostname() + "\r\n"); // 001 RPL_WELCOME
+    sendToClient(fd, ":" + client->getuName() + RPL_YOURHOST + client->getnName() + " :Your host is IRC_M2, running version APEX.1.0\r\n"); // 002 RPL_YOURHOST
+    sendToClient(fd, ":" + client->getuName() + RPL_CREATED + client->getnName() + " :This server was created by Martin and Miguel\r\n"); // 003 RPL_CREATED
+    sendToClient(fd, ":" + client->getuName() + RPL_MYINFO + client->getnName() + " IRC_M2 APEX.1.0 io ovimnqpsrtklbf :This server supports multiple modes\r\n"); // 004 RPL_MYINFO
+    sendToClient(fd, ":" + client->getuName() + RPL_ISUPPORT + client->getnName() + " CHANTYPES=#& PREFIX=(ov)@+ NETWORK=IRC_M2 :are supported by this server\r\n"); // 005 RPL_ISUPPORT
+
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERCLIENT + client->getnName() + " :There are 10 users and 3 services on 1 server\r\n"); // 251 RPL_LUSERCLIENT
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSEROP + client->getnName() + " 2 :operator(s) online\r\n"); // 252 RPL_LUSEROP
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERUNKNOWN + client->getnName() + " 1 :unknown connection(s)\r\n"); // 253 RPL_LUSERUNKNOWN
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERCHANNELS + client->getnName() + " 5 :channels formed\r\n"); // 254 RPL_LUSERCHANNELS
+    sendToClient(fd, ":" + client->getuName() + RPL_LUSERME + client->getnName() + " :I have " + intToString(this->clientCount) + " clients and 1 servers\r\n"); // 255 RPL_LUSERME	
+
+    sendToClient(fd, ":" + client->getuName() + RPL_MOTDSTART + client->getnName() + " :- " + client->getuName() + " Message of the Day -\r\n"); // 375 RPL_MOTDSTART
+    sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Welcome to the best IRC server!\r\n"); // 372 RPL_MOTD
+    sendToClient(fd, ":" + client->getuName() + RPL_MOTD + client->getnName() + " :- Enjoy your stay!\r\n"); // 372 RPL_MOTD
+    sendToClient(fd, ":" + client->getuName() + RPL_ENDOFMOTD + client->getnName() + " :End of /MOTD command.\r\n"); // 376 RPL_ENDOFMOTD
+
+	sendToClient(fd, welcomeMessage);
+	client->setisCapNegotiated(true);
+	this->clientCount++;
 }
 
-void Server::addChannel(std::string& chName, Client& cl) {
-	
-	if (check_ChanName(chName) && chName.size() <= MAX_CHAN_NAME_LEN) {
-		Channel ch(chName, cl);
-
-		channels.push_back(ch);
-		sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + getHostname() + " JOIN :" + ch.getchannelName() + "\r\n");
-		sendToClient(cl.getfd(), RPL_NAMREPLY + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
-		sendToClient(cl.getfd(), RPL_ENDOFNAMES + cl.getnName() + " " + chName + " :End of /NAMES list\r\n");
-		std::cout << "Client " << cl.getuName() << " created a channel " << chName << std::endl; 
-	} else {
-		// send Invalid channel name ERR MSG
-		sendToClient(cl.getfd(), ERR_BADCHANNAME + cl.getnName() + " " + chName + " :Invalid channel name\r\n");
-	}
-}
-
-bool Server::isChannel(const std::string& chname) {
-	for (size_t i = 0; i < channels.size(); ++i) {
-		if (chname == channels[i].getchannelName())
-			return true;
-	}
-	return false;
-}
-
-
-
-Client* Server::getClient(int fd) {
-	for (size_t i = 0; i < this->clients.size(); ++i) {
-		if (this->clients[i].getfd() == fd)
-			return &this->clients[i];
-	}
-	return NULL;
-}
-
-Client* Server::getClient(const std::string& name){
-	for (size_t i = 0; i < this->clients.size(); ++i){
-		if (this->clients[i].getnName() == name)
-			return &clients[i];
-	}
-	return NULL;
-}
-
-Channel* Server::getChannel(const std::string& chname) {
-	for (size_t i = 0; i < this->channels.size(); ++i){
-		if (this->channels[i].getchannelName() == chname)
-			return &this->channels[i];
-	}
-	return NULL;
-}
-
-void Server::displayClient() {
-	for (size_t i = 0; i < clients.size(); ++i) {
-		std::cout << "Client nick name: " << clients[i].getnName() << std::endl;
-		std::cout << "Client user name: " << clients[i].getuName() << std::endl;
-		std::cout << "Client fd: " << clients[i].getfd() << std::endl;	
-		std::cout << "Client ip: " << getHostname() << std::endl;
-	}
-}
-
-void Server::displayChannel() {
-	if (channels.size() < 1)
-		return;
-	std::vector<class Client> tmp = channels[0].getclientList();
-	for (size_t i = 0; i < tmp.size(); ++i){
-		std::cout << "Client user name: " << tmp[i].getuName() << std::endl;
-	}
-}
-
+// Process JOIN command To join/create a channel
 void Server::joinCMD(std::vector<std::string> line, Client* cl) {
 	
 	//process join join command we have to check in this function contents of the line to determine which constructor show
@@ -377,6 +457,7 @@ void Server::joinCMD(std::vector<std::string> line, Client* cl) {
 	}
 }
 
+// Check if the channel name is valid, if it exists, and if the client can join
 void Server::joinChannel(std::string chName, const char* key, Client* cl){
 
 	if (check_ChanName(chName)){ // check if the channel name is valid
@@ -388,7 +469,7 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 				sendToClient(cl->getfd(), ERR_ALREADYREGISTRED + cl->getnName() + " " + chName + " :You're already in that channel\r\n");
 				return ;
 			}
-			if (!tmpch->joinFlags()){addclienttoChannel(tmpch, cl); return;}
+			if (!tmpch->joinFlags()){addclienttoChannel(tmpch, cl); return;} 
 			if ((tmpch->getclientFlag() && tmpch->getclientSize() < tmpch->getlimit()) || !tmpch->getclientFlag()){
 				if ((tmpch->getinvFlag() || tmpch->getkeyFlag()) && tmpch->checkinvClient(cl)){
 					addclienttoChannel(tmpch, cl);
@@ -403,12 +484,30 @@ void Server::joinChannel(std::string chName, const char* key, Client* cl){
 			} else
 				sendToClient(cl->getfd(), ERR_CHANNELISFULL + cl->getnName() + " " + tmpch->getchannelName() + " :Cannot join channel (+l)\r\n");
 		} else
-			addChannel(chName, *cl);
+			addChannel(chName, *cl); // create a new channel
 	} else {
 		sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + chName + " :No such channel\r\n");
 	}
 }
 
+// If channel does not exist, create a new channel and add the client to it
+void Server::addChannel(std::string& chName, Client& cl) {
+	
+	if (check_ChanName(chName) && chName.size() <= MAX_CHAN_NAME_LEN) {
+		Channel ch(chName, cl);
+
+		channels.push_back(ch);
+		sendToClient(cl.getfd(), ":" + cl.getnName() + "!~" + cl.getuName() + "@" + getHostname() + " JOIN :" + ch.getchannelName() + "\r\n");
+		sendToClient(cl.getfd(), RPL_NAMREPLY + cl.getnName() + " = " + chName + " :@" + cl.getnName() + "\r\n");
+		sendToClient(cl.getfd(), RPL_ENDOFNAMES + cl.getnName() + " " + chName + " :End of /NAMES list\r\n");
+		std::cout << "Client " << cl.getuName() << " created a channel " << chName << std::endl; 
+	} else {
+		// send Invalid channel name ERR MSG
+		sendToClient(cl.getfd(), ERR_BADCHANNAME + cl.getnName() + " " + chName + " :Invalid channel name\r\n");
+	}
+}
+
+// join a client to an existing channel
 void Server::addclienttoChannel(Channel* chName, Client* cl){
 	chName->addClient(*cl);
 	sendToChannel(*chName, ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " JOIN :" + chName->getchannelName() + "\r\n");
@@ -430,6 +529,7 @@ void Server::addclienttoChannel(Channel* chName, Client* cl){
 	sendToClient(cl->getfd(), RPL_ENDOFNAMES + cl->getnName() + " " + chName->getchannelName() + " :End of /NAMES list\r\n");
 }
 
+// if the channel reqires a key, check if the key is correct and join the client
 void Server::joinPass(Channel* chName, const char* key, Client* cl){
 	std::string tmpkey(key);
 	if (chName->getclientFlag() == true && chName->getlimit() <= chName->getclientSize()) {
@@ -456,6 +556,7 @@ void Server::joinPass(Channel* chName, const char* key, Client* cl){
 	}
 }
 
+// Process PART command to make a client leave a channel
 void Server::partCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() > 1){
 		std::vector<std::string> chname = ::split(line[1], ',');
@@ -496,8 +597,10 @@ void Server::partCMD(std::vector<std::string> line, Client* cl){
 			// Delete channel if no clients are in it
 			if (tmpch->getclientSize() == 0) {
 				for (size_t i = 0; i < channels.size(); ++i) {
-					if (channels[i].getchannelName() == tmpch->getchannelName())
+					if (channels[i].getchannelName() == tmpch->getchannelName()) {
+						std::cout << (cl->getfd(), "Channel " + channels[i].getchannelName() + " has been deleted\r\n") << std::endl;
 						channels.erase(channels.begin() + i);
+					}
 				}
 			}
 		}
@@ -506,6 +609,7 @@ void Server::partCMD(std::vector<std::string> line, Client* cl){
 		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS + cl->getnName() + " PART :Not enough parameters\r\n");
 }
 
+// Process KICK command to kick a client from a channel
 void Server::kickCMD(std::vector<std::string> line, Client *cl){
 	if (line.size() > 2){
 		std::string reason = " :Client has been kicked out of the channel\r\n";
@@ -547,8 +651,10 @@ void Server::kickCMD(std::vector<std::string> line, Client *cl){
 				// Delete channel if no clients are in it
 				if (tmpch->getclientSize() == 0) {
 					for (size_t i = 0; i < channels.size(); ++i) {
-						if (channels[i].getchannelName() == tmpch->getchannelName())
+						if (channels[i].getchannelName() == tmpch->getchannelName()) {
+							std::cout << (cl->getfd(), "Channel " + channels[i].getchannelName() + " has been deleted\r\n") << std::endl;
 							channels.erase(channels.begin() + i);
+						}
 					}
 				}
 			}
@@ -558,7 +664,7 @@ void Server::kickCMD(std::vector<std::string> line, Client *cl){
 		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS + cl->getnName() + " KICK :Not enough parameters\r\n");
 }
 
-
+// Process PRIVMSG command to send a message to a client or channel
 void Server::privCMD(std::vector<std::string> line, Client* cl){
 
 	if (line.size() > 2) {
@@ -591,7 +697,7 @@ void Server::privCMD(std::vector<std::string> line, Client* cl){
 	}
 }
 
-
+// Perform PRIVMSG command to send a message to a channel
 void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
 	if (ch == NULL || cl == NULL)
 		return ;
@@ -603,10 +709,59 @@ void Server::privCMDsendtoChannel(Channel* ch, Client* cl, std::string tosend){
 	}
 }
 
+// Process TOPIC command to set or get the topic of a channel
+void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
+	if (vec.size() >= 2) {
+		Channel* tmpch = getChannel(vec[1]);
+
+		if (tmpch &&!tmpch->checkclientExist(cl)) {
+			if (tmpch->gettopicFlag() == false) {
+				sendToClient(cl->getfd(), ERR_NOTONCHANNEL + vec[1] + " :You're not on that channel\r\n");
+				std::cerr << "Client is not in the channel for client [" << cl->getfd() << "]" << std::endl;
+				return ;
+			}
+		}
+
+		if (vec.size() == 2 && tmpch != NULL){
+			sendToClient(cl->getfd(), RPL_TOPIC + tmpch->getchannelName() + ":" + tmpch->getTopic() + "\r\n");
+		} else if (vec.size() > 2 && tmpch != NULL) {
+			// if client a channel operator
+			if (!tmpch->checkclientOper(cl)) {
+				// check channel flag for topic
+				if (tmpch->gettopicFlag() == true) {
+					sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + tmpch->getchannelName() + " :You're not channel operator\r\n");
+					std::cerr << "Client is not a channel operator for client [" << cl->getfd() << "]" << std::endl;
+					return ;
+				}
+			}
+
+			std::string newTopic = vec[2];
+			for (size_t i = 3; i < vec.size(); i++) {
+				newTopic += " " + vec[i];
+			}
+
+			tmpch->setTopic(newTopic);
+			for (size_t i = 0; i < tmpch->getclientList().size(); i++) {
+				sendToClient(tmpch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + tmpch->getchannelName() + " " + newTopic + "\r\n");
+			}
+			
+		} else {
+			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + vec[1] + " : No such channel\r\n");
+			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
+			return ;
+		}
+	} else {
+		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS "* TOPIC :Not enough parameters\r\n");
+		std::cerr << "Invalid TOPIC command format from client [" << cl->getfd() << "]" << std::endl;
+		return ;
+	}
+	return ;
+}
+
+// Process MODE command to set or get or remove the mode of a channel. Modes handles are 't', 'i', 'k', 'o', 'l'
 void Server::modeCMD(std::vector<std::string> line, Client* cl){
 
-	// We are only requered to implement channel modes.
-	// if Mode is called for non channel (on client), return.
+	// This project only supports channel modes. User modes are not supported.
 	if (line.size() >= 2){
 		Channel* ch = getChannel(line[1]);
 		if (ch == NULL){
@@ -671,6 +826,7 @@ void Server::modeCMD(std::vector<std::string> line, Client* cl){
 	}
 }
 
+// Process INVITE command to invite a client to a channel
 void Server::inviteCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() == 3){
 		Client* tmp = getClient(line[2]);
@@ -700,32 +856,7 @@ void Server::inviteCMD(std::vector<std::string> line, Client* cl){
 	}
 }
 
-int Server::setChannelLimit(Channel* chName, Client *cl, std::string str){
-	char *ptr;
-	long num = std::strtol(str.c_str(), &ptr, 10);
-
-	if (num <= 0 || num > INT_MAX) {
-		sendToClient(cl->getfd(), "Client limit amount exceeds INT_MAX\r\n");
-		return -1;
-	}
-	else {
-		chName->setLimit(num);
-		chName->setclientFlag(true);
-		return 0;
-	}
-}
-
-void Server::setChannelKey(Channel* ch, Client* cl, std::string str){
-	//check str for alphanumerical and empty.
-	if(!checkpass(str)) {
-		sendToClient(cl->getfd(), ERR_INVALIDKEY + cl->getnName() + " " + ch->getchannelName() + " :Invalid channel key\r\n");
-		return ;
-	}
-	ch->setKey(str);
-	ch->setkeyFlag(true);
-
-}
-
+// Process PING command to check if the server is alive
 void Server::pingCMD(std::vector<std::string> line, Client* cl){
 	if (line.size() < 2){
 		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS " * PING :Not enough parameters\r\n");
@@ -745,6 +876,7 @@ void Server::pingCMD(std::vector<std::string> line, Client* cl){
 	sendToClient(cl->getfd(), "PONG " + line[1] + "\r\n");
 }
 
+// Process QUIT command to make a client leave the server (disconnect)
 void Server::quitCMD(std::vector<std::string> line, Client* cl){
 	// (void)line;
 	int fd = cl->getfd();
@@ -761,21 +893,119 @@ void Server::quitCMD(std::vector<std::string> line, Client* cl){
 		if (i < line.size() - 1)
 			quitMessage += " ";
 	}
+	if (quitMessage.empty())
+		quitMessage = " :Client Quit\r\n";
+	else
+		quitMessage = " :" + quitMessage + "\r\n";
 
 	// Send quit message to all channels client was in
 	std::vector<Channel> chList = channels;
 	for (size_t i = 0; i < chList.size(); ++i) {
 		if (chList[i].checkclientExist(cl))
-			sendToChannel(chList[i], ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " PART :" + chList[i].getchannelName() + "\r\n");
+			sendToChannel(chList[i], ":" + cl->getnName() + "!~" + cl->getuName() + "@" + getHostname() + " QUIT" + quitMessage);
 	}
 
-	std::cout << "Client " << cl->getnName() << " " << quitMessage << std::endl;
 	this->clientCount--;
 	eraseClient(cl);  // removes client from all its existing channels
 	removeClient(fd);
 	close(fd);
 }
 
+// Handle partial messages from clients
+void Server::partialMessage(char* str, int fd){
+	std::map<int, std::string>::iterator it = clbuffer.find(fd);
+	std::string tmp(str);
+	if (it != clbuffer.end())
+		it->second += tmp;
+	else
+		clbuffer[fd] = str;
+}
+
+// Remove client from the server and close the file descriptor
+void Server::removeClient(int fd) {
+	
+	for (size_t i = 0; i < clients.size(); ++i) {
+		if (clients[i].getfd() == fd) {
+			clients.erase(clients.begin() + i);
+			break ;
+		}
+	}
+	for (size_t i = 0; i < pollfds.size(); ++i){
+		if (pollfds[i].fd == fd){
+			pollfds.erase(pollfds.begin() + i);
+			break ;
+		}
+	}
+	std::map<int, std::string>::iterator it = clbuffer.find(fd);
+	if (it != clbuffer.end())
+		clbuffer.erase(it);
+}
+
+// Check if the channel name is available on the server's channel list
+bool Server::isChannel(const std::string& chname) {
+	for (size_t i = 0; i < channels.size(); ++i) {
+		if (chname == channels[i].getchannelName())
+			return true;
+	}
+	return false;
+}
+
+// return the client object from the server's client list using fd number, return NULL if not found
+Client* Server::getClient(int fd) {
+	for (size_t i = 0; i < this->clients.size(); ++i) {
+		if (this->clients[i].getfd() == fd)
+			return &this->clients[i];
+	}
+	return NULL;
+}
+
+// return the client object from the server's client list using nickname, return NULL if not found
+Client* Server::getClient(const std::string& name){
+	for (size_t i = 0; i < this->clients.size(); ++i){
+		if (this->clients[i].getnName() == name)
+			return &clients[i];
+	}
+	return NULL;
+}
+
+// return the channel object from the server's channel list using channel name, return NULL if not found
+Channel* Server::getChannel(const std::string& chname) {
+	for (size_t i = 0; i < this->channels.size(); ++i){
+		if (this->channels[i].getchannelName() == chname)
+			return &this->channels[i];
+	}
+	return NULL;
+}
+
+// Set channel limit for the channel (maximum number of clients allowed in the channel)
+int Server::setChannelLimit(Channel* chName, Client *cl, std::string str){
+	char *ptr;
+	long num = std::strtol(str.c_str(), &ptr, 10);
+
+	if (num <= 0 || num > INT_MAX) {
+		sendToClient(cl->getfd(), "Client limit amount exceeds INT_MAX\r\n");
+		return -1;
+	}
+	else {
+		chName->setLimit(num);
+		chName->setclientFlag(true);
+		return 0;
+	}
+}
+
+// Set channel key for the channel (password required to join the channel)
+void Server::setChannelKey(Channel* ch, Client* cl, std::string str){
+	//check str for alphanumerical and empty.
+	if(!checkpass(str)) {
+		sendToClient(cl->getfd(), ERR_INVALIDKEY + cl->getnName() + " " + ch->getchannelName() + " :Invalid channel key\r\n");
+		return ;
+	}
+	ch->setKey(str);
+	ch->setkeyFlag(true);
+
+}
+
+// Send the server's capabilities to the client
 void Server::sendCapabilities(int fd) {
 
     std::vector<std::string> serverCapabilities;
@@ -805,92 +1035,9 @@ void Server::sendCapabilities(int fd) {
 
 }
 
-
-void Server::clAuthentication(int fd, std::vector<std::string>& vec) {
-	bool isCap = false;
-	Client *client = getClientByFd(fd);
-
-	if (vec.empty()) {
-		return ;
-	}
-
-	for (size_t i = 0; i < vec.size(); i++) {
-		if (vec[0] ==  "CAP")
-			isCap = true;
-		if (vec[0] == "PASS" || vec[0] == "pass")
-			passCMD(fd, vec, isCap);
-		else if (vec[0] == "NICK" || vec[0] == "nick") 
-			nickCMD(fd, vec, isCap);
-		else if (vec[0] == "USER" || vec[0] == "user") 
-			userCMD(fd, vec);
-		else if (vec[0] == "CAP" || vec[0] == "cap")
-			capCMD(client, vec, fd);
-
-		vec.erase(vec.begin());
-		if (vec.empty()) {
-			break;
-		}
-		vec.erase(vec.begin());
-	}
-	return ;
-}
-
-// Handle the CAP command from the client. 
-void Server::capCMD(Client* client, std::vector<std::string>& vec, int fd) {
-	if (vec[1] == "LS" || vec[1] == "ls") {
-		if (client->getisCapNegotiated() == true) {
-			return ;
-		}
-		sendCapabilities(fd); // set the client info. Send the capabilities to the client.
-	} else if (vec[1] == "REQ" || vec[1] == "req") {
-		sendToClient(fd, "CAP * ACK " + vec[2] + "\r\n");
-		vec.erase(vec.begin()); // remove the CAP command. This is crucial for the client to be able to process the rest of the command (Especially for the NICK command, if nickname already exists, the client will not be able to change it without the CAP command being removed from the command vector)
-	} else if (vec[1] == "END" || vec[1] == "end") {
-		
-	}
-	 else {
-		sendToClient(fd, ERR_UNKNOWNCOMMAND " * :Unknown CAP command\r\n");
-	}
-}
-
-// Handle the PASS command from the client. Remove the client if the password is incorrect.
-void Server::passCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
-	if (getClientByFd(fd)->getisPass() == true) {
-		sendToClient(fd, ERR_ALREADYREGISTRED " * :You may not reregister\r\n");
-		// std::cerr << "Client [" << fd << "] may not reregister" << std::endl;
-		return ;
-	}
-
-	if (vec.size() < 2 || vec[1].empty()) {
-		sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
-		// std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
-		return ;
-	}
-
-	if (vec.size() != 2) {
-		if (isCap == false) {
-			sendToClient(fd, ERR_NEEDMOREPARAMS " * PASS :Not enough parameters\r\n");
-			// std::cerr << "Invalid PASS command format from client [" << fd << "]" << std::endl;
-			return ;
-		}
-	}
-
-	if (vec[1] == this->pass) {
-		getClientByFd(fd)->setisPass(true);
-		// std::cout << "Password is correct for client [" << fd << "]" << std::endl;
-		return ;
-	} else {
-		sendToClient(fd, ERR_PASSWDMISMATCH " * :Password incorrect\r\n");
-		// std::cerr << "Password is incorrect for client [" << fd << "]" << std::endl;
-		return ;
-	}
-}
-
-
-bool Server::isNickValid(const std::string& nick) { // May want to make nickname limit for 9 chars
-	if (nick.empty() || nick[0] == '\0') // check if the nickname is empty
-		return false;
-	if (nick.length() > 30) // check if the nickname is too long. The maximum length is 30 characters(There is no official limit, used for testing purposes).
+// Check if the nickname is valid
+bool Server::isNickValid(const std::string& nick) { 
+	if (nick.empty() || nick[0] == '\0')
 		return false;
 	if (nick[0] == '#' || isdigit(nick[0]) || nick[0] == ':') // check if the nickname starts with a disallowed character (: is OK with irssi)
 		return false;
@@ -902,99 +1049,6 @@ bool Server::isNickValid(const std::string& nick) { // May want to make nickname
 		return false;
 	return true;
 }
-
-// Handle the NICK command from the client. Set the nickname for the client.
-// Send an error message if the nickname is already in use. irssi out automatically set the nickname to a different but similar one.
-void Server::nickCMD(int fd, const std::vector<std::string>& vec, bool isCap) {
-	// (void)isCap;
-	if (getClientByFd(fd)->getisPass() == false) {
-		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
-		// std::cerr << "Client [" << fd << "] has not registered" << std::endl;
-		return ;
-	}
-
-	if (vec.size() < 2) {
-		sendToClient(fd, ERR_NONICKNAMEGIVEN " * :No nickname given\r\n");
-		// std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
-		return;
-	}
-
-	if (vec.size() != 2) {
-		if (isCap == false) {
-			sendToClient(fd, ERR_NEEDMOREPARAMS " * NICK :Not enough parameters\r\n");
-			// std::cerr << "Invalid NICK command format from client [" << fd << "]" << std::endl;
-			return ;
-		}
-	}
-
-	if (!isNickValid(vec[1])) {
-		sendToClient(fd, ERR_ERRONEUSNICKNAME + vec[1] + " :Erroneous Nickname\r\n");
-		// std::cout << "Error: Invalid nickname" << std::endl;
-		return ;
-	}
-
-	Client *client = getClientByFd(fd);
-
-	for (size_t i = 0; i < clients.size(); i++) {
-		if (clients[i].getnName() == vec[1]) {
-			getClientByFd(fd)->setisNick(true);
-			sendToClient(fd, ERR_NICKNAMEINUSE + vec[1] + " :Nickname is already in use\r\n");
-			return ;
-		}
-	}
-	// send new client nick name to client
-	if (client->getisNick() == true) {
-		sendToClient(fd, ":" + client->getnName() + "!" + client->getuName() + "@" + getHostname() + " NICK :" + vec[1] + "\r\n");
-
-		// Broadcast to channels that client has updated thier nick name
-		std::vector<Channel> chList = channels;
-		for (size_t i = 0; i < chList.size(); ++i) {
-			if (chList[i].checkclientExist(client)) {
-				for (int j = 0; j < chList[i].getclientSize(); ++j) {
-					if (chList[i].getclientList()[j].getfd() != fd)
-						sendToClient(chList[i].getclientList()[j].getfd(), ":" + client->getnName() + " NICK :" + vec[1] + "\r\n");
-				}
-			}
-		}
-
-	}
-
-	std::string oldNick = client->getnName();
-	client->setnName(vec[1]);
-	client->setisNick(true);
-
-	// std::cout << "Nickname set to [" << vec[1] << "] for client [" << fd << "]" << std::endl;
-}
-
-
-// Handle the USER command from the client. Set the username for the client.
-void Server::userCMD(int fd, const std::vector<std::string>& vec) {
-
-	if (getClientByFd(fd)->getisPass() == false || getClientByFd(fd)->getisNick() == false) {
-		sendToClient(fd, ERR_NOTREGISTERED ":You have not registered\r\n");
-		return ;
-	} else if (getClientByFd(fd)->getisRegistered() == true) {
-		sendToClient(fd, ERR_ALREADYREGISTRED " *" + getClientByFd(fd)->getnName() + " :You may not reregister\r\n");
-	}
-	
-	if (vec.size() < 5) {
-		sendToClient(fd, ERR_NEEDMOREPARAMS " * USER :Not enough parameters\r\n");
-		return;
-	}
-
-	if (!vec[1].empty()) {
-		Client *client = getClientByFd(fd);
-		
-		client->setuName(vec[1]);
-		client->setservName(vec[3]);
-		client->setrealName(vec[4]);
-		client->setisRegistered(true);
-	}
-	else {
-		sendToClient(fd, ERR_NEEDMOREPARAMS " * USER :Not enough parameters\r\n");
-	}
-}
-
 
 // Send a message to the client. Return the number of bytes sent.
 ssize_t Server::sendToClient(int fd, const std::string& msg) {
@@ -1009,6 +1063,7 @@ ssize_t Server::sendToClient(int fd, const std::string& msg) {
 	return sentBytes;
 }
 
+// Send a message to all clients in the channel
 void Server::sendToChannel(Channel& ch, const std::string& msg){
 	
 	if (isChannel(ch.getchannelName())){
@@ -1037,12 +1092,11 @@ std::vector<std::string> Server::splitCmd(const std::string& str) {
 	// Remove empty strings from the vector.
 	for (std::vector<std::string>::iterator it = vec.begin(); it != vec.end();) {
 		if (it->empty()	|| *it == "\r" || *it == "\n") {
-			it = vec.erase(it); // erase returns the next valid iterator
+			it = vec.erase(it);
 		} else {
-			++it; // move to the next element
+			++it; 
 		}
 	}
-
 	return vec;
 }
 
@@ -1056,7 +1110,7 @@ Client* Server::getClientByFd(int fd) {
 	return NULL;
 }
 
-
+// 
 std::string Server::addStrings(std::vector<std::string> lines, size_t i) {
 	std::string tmp;
 	for (size_t j = i; j < lines.size(); ++j){
@@ -1067,56 +1121,9 @@ std::string Server::addStrings(std::vector<std::string> lines, size_t i) {
 	return tmp;
 }
 
+// Signal handler for SIGINT and SIGQUIT
 void sigHandler(int signum) {
 	(void)signum;
 	::stopflag = true;
 	std::cout << "\nServer is shutting down" << std::endl;
-}
-
-void Server::topicCMD(std::vector<std::string>& vec, Client *cl) {
-	if (vec.size() >= 2) {
-		Channel* tmpch = getChannel(vec[1]);
-
-		if (tmpch &&!tmpch->checkclientExist(cl)) {
-			if (tmpch->gettopicFlag() == false) {
-				sendToClient(cl->getfd(), ERR_NOTONCHANNEL + vec[1] + " :You're not on that channel\r\n");
-				std::cerr << "Client is not in the channel for client [" << cl->getfd() << "]" << std::endl;
-				return ;
-			}
-		}
-
-		if (vec.size() == 2 && tmpch != NULL){
-			sendToClient(cl->getfd(), RPL_TOPIC + tmpch->getchannelName() + ":" + tmpch->getTopic() + "\r\n");
-		} else if (vec.size() > 2 && tmpch != NULL) {
-			// if client a channel operator
-			if (!tmpch->checkclientOper(cl)) {
-				// check channel flag for topic
-				if (tmpch->gettopicFlag() == true) {
-					sendToClient(cl->getfd(), ERR_CHANOPRIVSNEEDED + cl->getnName() + " " + tmpch->getchannelName() + " :You're not channel operator\r\n");
-					std::cerr << "Client is not a channel operator for client [" << cl->getfd() << "]" << std::endl;
-					return ;
-				}
-			}
-
-			std::string newTopic = vec[2];
-			for (size_t i = 3; i < vec.size(); i++) {
-				newTopic += " " + vec[i];
-			}
-
-			tmpch->setTopic(newTopic);
-			for (size_t i = 0; i < tmpch->getclientList().size(); i++) {
-				sendToClient(tmpch->getclientList()[i].getfd(), ":" + cl->getnName() + " TOPIC " + tmpch->getchannelName() + " " + newTopic + "\r\n");
-			}
-			
-		} else {
-			sendToClient(cl->getfd(), ERR_NOSUCHCHANNEL + cl->getnName() + " " + vec[1] + " : No such channel\r\n");
-			std::cerr << "Channel does not exist for client [" << cl->getfd() << "]" << std::endl;
-			return ;
-		}
-	} else {
-		sendToClient(cl->getfd(), ERR_NEEDMOREPARAMS "* TOPIC :Not enough parameters\r\n");
-		std::cerr << "Invalid TOPIC command format from client [" << cl->getfd() << "]" << std::endl;
-		return ;
-	}
-	return ;
 }

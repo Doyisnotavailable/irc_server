@@ -69,7 +69,6 @@ int parse_port(const char *str) {
     return (int)port;
 }
 
-
 int parse_password(const char *str) {
     if (str == NULL || str[0] == '\0') {
         return -1;
