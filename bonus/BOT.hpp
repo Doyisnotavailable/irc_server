@@ -10,20 +10,16 @@ extern bool _censorFlag;
 class BOT {
 	private:
 		std::vector<std::string> swearWords;
-		// bool censorFlag;
 
 	public:
 		BOT();
 		~BOT();
-		BOT(const BOT& tocpy);
-		BOT& operator=(const BOT& toasgn);
-		
-		bool censorMsg(const std::string& msg);
 
+		int registerBot(std::string channelName, const char *password, const char *ipAddress, int port, int sockfd);
+		bool censorMsg(const std::string& msg);
 		bool containsSwearWord(const std::string& msg);
 
-		// bool getcensorFlag() const;
-		// void setcensorFlag(bool flag);
+		void monitor(struct pollfd *pollfds, std::string channelName, int sockfd);
 
 };
 
