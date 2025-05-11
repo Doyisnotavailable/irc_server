@@ -1,2 +1,0 @@
-
-When a new client joins a channel we should print something on the server. Same when they quit
